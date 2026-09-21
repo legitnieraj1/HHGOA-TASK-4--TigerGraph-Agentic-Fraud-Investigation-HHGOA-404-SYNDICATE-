@@ -19,8 +19,7 @@ Rule: the dataset README wins over prompt.md on data semantics and answer format
 - `card1` is 1:1 with customer (13,553 distinct), so `customer_id` == card1 grouping.
 - 14,317 cards total (K1 13,553 / K2 760 / K3 4). `card4` never varies within a (customer, card6), so
   (card4, card6) gives the same rank except 1 extra card. Using card6-only.
-- K1 with NULL card attrs = rows the organisers added "to seed investigation exercises" (TransactionID
-  > ~7.5M, tiny counts). They belong to K1 while the customer's real card is K2. Treat seeded rows carefully.
+- NOTE (corrected 2026-09-21): an earlier guess that organiser-seeded rows have TransactionID > 7.5M was wrong (0 rows; the 7.8M values were TransactionDT seconds). Rows with NULL card6 (1,571 txns) land on K1 by the NULLS-FIRST rule. Seeded rows cannot be identified by ID; do not assume they can.
 
 ### Prompt vs README conflicts (README followed)
 | # | prompt.md says | README says | Decision |
@@ -58,3 +57,20 @@ Rule: the dataset README wins over prompt.md on data semantics and answer format
 - GSQL over REST: `POST /gsql/v1/statements` with `Authorization: Bearer <token>`, `Content-Type: text/plain`.
 - Existing graph `Transaction_Fraud` is TigerGraph's pre-loaded sample. Left untouched. We create our own `FraudGraph`.
 - Secret was pasted in chat once: rotate before submission (Database Secrets), update `.env`.
+
+## Phase 1 - graph schema + ingestion - DONE 2026-09-21
+- Graph `FraudGraph` (local schema, so no collision with the sample `Transaction_Fraud` global types). Built by `scripts/10_setup_graph.py` from `tigergraph/spec.py` (single source of truth for columns, DDL, export SQL, loading jobs).
+- Vertices: Customer, Card, Transaction (73 attrs), DeviceProfile, EmailDomain, BillingRegion, ClosedCase, plus agent-written InvestigationCase, Action, PolicyDoc. Vector attrs (`emb`, 384-d COSINE, HNSW) on ClosedCase, PolicyDoc, InvestigationCase.
+- Edges (each with a reverse edge): OWNS, MADE, FROM_DEVICE, PURCHASER_EMAIL, RECIPIENT_EMAIL, BILLED_IN, NEXT(gap_s), INVOLVES, CC_ON_CARD, CC_CONNECTED_TO, HAS_EVIDENCE, CASE_ON_CARD, CASE_CONNECTED_TO, CASE_DEVICE, TOOK_ACTION, SIMILAR_TO(score).
+- Reconciled exactly vs export (`scripts/25_verify_load.py`): Customer 13,553 | Card 14,317 | Transaction 590,742 | DeviceProfile 9,705 | EmailDomain 60 | BillingRegion 332 | ClosedCase 5,565; MADE 590,742 | NEXT 576,425 | OWNS 14,317 | INVOLVES 14,955 | CC_ON_CARD 5,565 | CC_CONNECTED_TO 92 | FROM_DEVICE 140,784 | BILLED_IN 525,003 | PURCHASER_EMAIL 496,262 | RECIPIENT_EMAIL 137,453.
+- Spot checks vs DuckDB pass (txn 3514030, customers C12382/C08623/C13487, CC-0004).
+
+### Decisions and gotchas
+- V1-V339 are NOT in the graph (size/speed on a 2 vCPU workspace). They stay in `data/profile/profile.duckdb`; the agent reads them via a `get_features(txn_id)` tool and must cite them as unnamed model features (README).
+- Missing numerics are stored as sentinel `-1` (never 0); missing strings as `""`. Every query/tool must treat `-1` as NULL. `-1` for `D*` cols means "not recorded".
+- `DeviceProfile` key = `DeviceInfo | id_30 | id_31 | id_33` (README example format; missing part = empty string). Device IDs contain `/` so REST path GETs on DeviceProfile fail: use GSQL queries.
+- Reserved words: `proxy` cannot be an attribute (renamed `ip_proxy`).
+- Local schema-change jobs: a vertex must exist before `ALTER ... ADD VECTOR ATTRIBUTE` (separate job). Each job ~36 s.
+- Loading jobs: no `CREATE OR REPLACE`; use `DROP JOB` then `CREATE`. Ingest is eventually consistent (Kafka): counts lag, verify by polling.
+- REST `/restpp/ddl` load: a 10k-row chunk hit a gateway 504 once; loader now retries with backoff and uses 5k chunks. Whole load ~7 min.
+- Timing: case-pack `opened_at` is later than the flagged txn `ts` (e.g. HHG-001: txn 2016-12-04 19:55, opened 12-05 01:55). Investigations must only use history up to the flagged txn (no future leakage) when building baselines.

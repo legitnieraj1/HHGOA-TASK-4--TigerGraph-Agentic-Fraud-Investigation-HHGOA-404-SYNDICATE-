@@ -8,3 +8,6 @@ data/profile/*.parquet
 .DS_Store
 *.duckdb
 *.duckdb.wal
+.tg_token
+.vectors_applied
+data/export/
