@@ -1,0 +1,10 @@
+.venv/
+data/raw/
+.env
+__pycache__/
+*.pyc
+node_modules/
+data/profile/*.parquet
+.DS_Store
+*.duckdb
+*.duckdb.wal
