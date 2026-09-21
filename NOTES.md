@@ -86,3 +86,11 @@ Rule: the dataset README wins over prompt.md on data semantics and answer format
 - Design consequences for `llm/` wrapper: (1) retry with backoff + model fallback chain on 5xx/timeouts, hard per-call timeout (no default OpenAI retries), (2) on-disk cache keyed by (model, messages, tools) so re-running the 20-case benchmark is deterministic and cheap, (3) LLM only reasons/selects tools/explains; every fraud signal, probability input and action route is computed deterministically from graph queries + policy engine, and the explanation has a templated fallback if the LLM is unreachable, so the benchmark can always be produced.
 - Reasoning models may return empty `content` with `reasoning_content`; wrapper must handle that and set generous `max_tokens`.
 - NVIDIA key was pasted in chat: rotate at build.nvidia.com before submission.
+
+### LLM chain update - 2026-09-21 (supersedes primary model above)
+- Gemini key works (model list OK). Probed via OpenAI-compatible endpoint, tool call + JSON mode:
+  - `gemini-3.6-flash`: tool OK 5.6 s, JSON OK 20 s  -> PRIMARY
+  - `gemini-3.1-flash-lite`: tool OK, JSON OK 1.4 s   -> fallback 1
+  - `gemini-3.8-flash` 503 overloaded, `gemini-3.7-flash` timeout, `gemini-flash-latest` JSON 503, `gemini-2.5-flash` retired for new users (404).
+- Chain in `.env`: `LLM_CHAIN=gemini:gemini-3.6-flash, gemini:gemini-3.1-flash-lite, nvidia:nemotron-3-ultra-550b-a55b, nvidia:nemotron-3-nano-omni-30b-a3b-reasoning`. Wrapper tries in order on 5xx/timeout.
+- Gemini key was pasted in chat: rotate before submission (aistudio.google.com/apikey). Rotate all of: TG secret, NVIDIA key, Gemini key, AgentRouter key.
