@@ -74,3 +74,15 @@ Rule: the dataset README wins over prompt.md on data semantics and answer format
 - Loading jobs: no `CREATE OR REPLACE`; use `DROP JOB` then `CREATE`. Ingest is eventually consistent (Kafka): counts lag, verify by polling.
 - REST `/restpp/ddl` load: a 10k-row chunk hit a gateway 504 once; loader now retries with backoff and uses 5k chunks. Whole load ~7 min.
 - Timing: case-pack `opened_at` is later than the flagged txn `ts` (e.g. HHG-001: txn 2016-12-04 19:55, opened 12-05 01:55). Investigations must only use history up to the flagged txn (no future leakage) when building baselines.
+
+## LLM choice - 2026-09-21 (swap from spec's Claude, allowed by spec s2 "document the swap")
+- Anthropic key not available; the AgentRouter key is rejected for direct API use (401 "unauthorized client"), and we do not spoof client identity.
+- Using NVIDIA NIM free endpoint (`https://integrate.api.nvidia.com/v1`, OpenAI-compatible). Probed 2026-09-21:
+  - WORKS: `nvidia/nemotron-3-ultra-550b-a55b` (tool call ok 2.1 s), `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning` (JSON ok).
+  - Hangs on first request (cold/unavailable): `nemotron-3.5-lightning-30b-a3b`, `glm-5.3(-flash)`, `gemma-4-31b-it`, `gpt-oss-20b`, `kimi-k3`.
+  - End-of-life (HTTP 410): `llama-3.3-70b-instruct`, `gpt-oss-120b`, `qwen3-next-80b`.
+  - Free tier is shared: intermittent 503 "overloaded" / "worker request limit reached".
+- Primary `LLM_MODEL=nvidia/nemotron-3-ultra-550b-a55b`; `LLM_FALLBACK_MODELS=nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`. Optional last fallback: Gemini 3 Flash if a key is added.
+- Design consequences for `llm/` wrapper: (1) retry with backoff + model fallback chain on 5xx/timeouts, hard per-call timeout (no default OpenAI retries), (2) on-disk cache keyed by (model, messages, tools) so re-running the 20-case benchmark is deterministic and cheap, (3) LLM only reasons/selects tools/explains; every fraud signal, probability input and action route is computed deterministically from graph queries + policy engine, and the explanation has a templated fallback if the LLM is unreachable, so the benchmark can always be produced.
+- Reasoning models may return empty `content` with `reasoning_content`; wrapper must handle that and set generous `max_tokens`.
+- NVIDIA key was pasted in chat: rotate at build.nvidia.com before submission.
