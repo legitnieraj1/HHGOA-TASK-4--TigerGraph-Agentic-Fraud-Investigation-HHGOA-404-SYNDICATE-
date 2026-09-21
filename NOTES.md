@@ -50,3 +50,11 @@ Rule: the dataset README wins over prompt.md on data semantics and answer format
 ## Open items / blockers
 - [ ] TigerGraph target: Savanna signup (needs Nieraj) or Community Edition in Docker (colima).
 - [ ] `ANTHROPIC_API_KEY` (+ embedding provider key) into `.env`.
+
+## Phase 1 prep - Savanna connected 2026-09-21
+- Workspace `MyWorkspace` (R/W, TigerGraph 4.2.5, 2 vCPU / 16 GiB), auto-suspend 20 min + auto-resume on (set in Workspace Configuration > Advanced Settings).
+- Host: `tg-70490eff-1a5c-4c6e-a767-0ea7bf6c9db2.tg-2635877100.i.tgcloud.io` (found via Admin Portal URL `domain=` param; the Connect dropdown does not show it).
+- Auth: secret -> `POST /gsql/v1/tokens {"secret":..., "lifetime":"3600"}`. Omit `graph` (the secret alias `MyDatabase` is a label, not a graph name; passing it returns "Graph MyDatabase not found"). Token is global (user is superuser). Tokens expire, client must refresh.
+- GSQL over REST: `POST /gsql/v1/statements` with `Authorization: Bearer <token>`, `Content-Type: text/plain`.
+- Existing graph `Transaction_Fraud` is TigerGraph's pre-loaded sample. Left untouched. We create our own `FraudGraph`.
+- Secret was pasted in chat once: rotate before submission (Database Secrets), update `.env`.
