@@ -94,3 +94,24 @@ Rule: the dataset README wins over prompt.md on data semantics and answer format
   - `gemini-3.8-flash` 503 overloaded, `gemini-3.7-flash` timeout, `gemini-flash-latest` JSON 503, `gemini-2.5-flash` retired for new users (404).
 - Chain in `.env`: `LLM_CHAIN=gemini:gemini-3.6-flash, gemini:gemini-3.1-flash-lite, nvidia:nemotron-3-ultra-550b-a55b, nvidia:nemotron-3-nano-omni-30b-a3b-reasoning`. Wrapper tries in order on 5xx/timeout.
 - Gemini key was pasted in chat: rotate before submission (aistudio.google.com/apikey). Rotate all of: TG secret, NVIDIA key, Gemini key, AgentRouter key.
+
+## Phase 2 calibration findings - 2026-09-21 (DuckDB prototypes on closed cases; GSQL queries mirror these features)
+### Data facts that shape the detectors
+- **risk_score is not a fraud signal on the case population**: fraud-vs-cleared AUC 0.058 (inverted). Cleared alerts avg risk 0.88, fraud cases avg 0.47. Over ALL txns Oct it is weakly informative (AUC 0.865) but on risk>=0.5 alerts it is 0.59.
+- **Pattern labels follow episode composition**: CNP = all online + no `New` device flag (100%/0%); CNP-new-device = all online + New (100%); OOR = all in-person (100%); ATO = 81% all-in-person, 19% mixed channel. **ATO vs OOR is NOT separable** by any episode feature I found (depth-3 tree 67% vs 56% base). Agent must report ATO/OOR with honest low confidence; both lead to BLOCK_CARD + CREATE_CASE so actions are unaffected.
+- **Region novelty does not define OOR**: 77% of OOR key txns have the region in the card's prior history; cleared 'travel' cases look the same (19% vs 23% zero-history). Do not use region novelty as a decisive signal.
+- **Cleared cases** (900): 716 'travel' (mostly online+New device in the data), 158 'new phone' (online, New device), 26 'unusual amount' (in-person). All single-txn, avg risk 0.88. Reasons in notes are not observable in txn features.
+- **Episode span is long**: median 0.0h (CNP) to 27h (ATO), p95 up to 520h. Fraud txns are interleaved with legit ones on the same card.
+### Fraud-propensity model (`detectors/propensity.py`, `scripts/32_train_propensity.py`)
+- HistGradientBoosting over 408 features: Vesta C/D/M/V/id (unnamed, cited as such) + history-only graph features (`scripts/31_graph_features.py`: burst counts, first-seen device/region/product on card, other cards on same device, amount ratio). Trained ONLY on closed-case labels (1 = txn in confirmed_fraud case, 0 = every other Jul-Oct txn incl. cleared). No public Kaggle data used.
+- 5-fold GroupKFold by customer: OOF AUC 0.947, AP 0.712. Time split (train Jul-Sep, test Oct): AUC 0.956; on Oct risk>=0.5: AUC 0.917 vs 0.593 for risk_score. Graph features add +0.009 AP.
+- Isotonic-calibrated `p_cal`: on ALL risk>=0.5 txns bins track truth (pred 0.618 vs actual 0.682 in 0.5-0.7; 0.931 vs 0.940 in 0.85-1). Cleared alerts get mean p 0.07 (model correctly discounts risk 0.88).
+- Key-txn fraud-vs-cleared AUC 0.817. Weakness: in-person ATO/OOR fraud median p only 0.14 (looks normal to Vesta features); undocumented median 0.13. Graph/rule detectors and the uncertainty loop must cover these.
+### Episode reconstruction (from the flagged/key txn)
+- Rule: same-card txns within +-24h with p_cal >= 0.5 and same channel, plus the key txn. Precision 0.987, recall 0.80, F1 0.885 (key-only F1 0.823). Longer windows trade precision for recall (72h: 0.93/0.84).
+### Undocumented patterns (README: scored if found)
+- **Threshold structuring**: 5 closed cases, 4 online purchases within ~27 min, each $465-$492 (just under $500), total ~$1.9k, all ProductCD C. Model p 0.04-0.54 (blind). Rule: >=3 online purchases within 60 min, each in [0.8T, T) for T in {250,500,1000,2000}.
+- **Shared-device ring**: device `SM-G935F Build/NRD90M | Android 7.0 | chrome 62.0 for android | 1920x1080` behind `IP_PROXY:ANONYMOUS`, `New` on each account: 52 cards, 114 txns, 2016-08-15..2016-12-04, only 10 fraud txns closed so far. Model p 0.01-0.04 (blind). Most of the ring is still open in Nov-Dec (HHG-014 analyst request). Graph hub detection is required.
+- Data-artifact observation (not used as evidence): injected undocumented rows have timestamps on exact minutes (seconds = 00).
+### Card testing
+- The 16 closed testing cases are tiny amounts (<$1) scattered over days, not the README's 3-in-an-hour. Loose rule (>=3 online < $5 in 72h before a >=$10 purchase) is weak: fires on 5,054 clean txns vs 89 true (LR ~5). Strict README rule (>=3 tiny < $5 within 60 min then a larger purchase) treated as strong. Both encoded, with different match strengths.

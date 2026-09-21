@@ -11,3 +11,4 @@ data/profile/*.parquet
 .tg_token
 .vectors_applied
 data/export/
+data/models/
