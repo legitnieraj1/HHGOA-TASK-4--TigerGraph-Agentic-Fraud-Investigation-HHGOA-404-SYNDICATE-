@@ -20,3 +20,5 @@ data/approvals.json
 outputs/benchmark_run*.log
 .DS_Store
 tigergraph/.vectors_applied
+ui/node_modules/
+ui/dist/

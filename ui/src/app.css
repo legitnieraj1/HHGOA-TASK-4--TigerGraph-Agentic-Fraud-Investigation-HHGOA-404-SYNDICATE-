@@ -1,0 +1,99 @@
+/* Layout built on Carbon's own tokens (--cds-*) and spacing scale, not ad-hoc values -- the "one
+   design system" rule. DENSITY 8 (cockpit): tight paddings, hairline dividers instead of card boxes
+   wherever a Carbon component doesn't already impose its own container. MOTION 2 (regulated/trust-first):
+   only functional transitions (hover/focus/active), no decorative animation.
+   Carbon's type tokens are split properties (no single `font:` shorthand) -- .cds-heading-compact-01 /
+   .cds-body-compact-01 / .cds-label-01 below apply the real font-size/weight/line-height/letter-spacing
+   custom properties Carbon's Sass actually emits (verified against the compiled build output). */
+
+* { box-sizing: border-box; }
+
+.cds-heading-compact-01 { font-size: var(--cds-heading-compact-01-font-size); font-weight: var(--cds-heading-compact-01-font-weight); line-height: var(--cds-heading-compact-01-line-height); letter-spacing: var(--cds-heading-compact-01-letter-spacing); }
+.cds-body-compact-01 { font-size: var(--cds-body-compact-01-font-size); font-weight: var(--cds-body-compact-01-font-weight); line-height: var(--cds-body-compact-01-line-height); letter-spacing: var(--cds-body-compact-01-letter-spacing); }
+.cds-body-compact-02 { font-size: var(--cds-body-compact-02-font-size); font-weight: var(--cds-body-compact-02-font-weight); line-height: var(--cds-body-compact-02-line-height); letter-spacing: var(--cds-body-compact-02-letter-spacing); }
+.cds-label-01 { font-size: var(--cds-label-01-font-size); font-weight: var(--cds-label-01-font-weight); line-height: var(--cds-label-01-line-height); letter-spacing: var(--cds-label-01-letter-spacing); }
+
+#app {
+  display: grid;
+  grid-template-rows: 3rem 1fr;
+  height: 100vh;
+}
+
+cds-header { position: static; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 22rem 1fr 24rem;
+  min-height: 0;
+}
+
+.col {
+  overflow-y: auto;
+  border-right: 1px solid var(--cds-border-subtle);
+}
+.col:last-child { border-right: none; }
+
+@media (max-width: 1279px) {
+  .layout { grid-template-columns: 18rem 1fr; }
+  .col.chat { display: none; }
+}
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; grid-auto-rows: min-content; }
+  .col.detail, .col.chat { display: none; }
+}
+
+/* case list */
+.case-row {
+  padding: var(--cds-spacing-05) var(--cds-spacing-06);
+  border-bottom: 1px solid var(--cds-border-subtle);
+  cursor: pointer;
+  transition: background-color 70ms cubic-bezier(0.2, 0, 0.38, 0.9);
+}
+.case-row:hover { background: var(--cds-layer-hover-01); }
+.case-row.active { background: var(--cds-layer-selected-01); border-left: 3px solid var(--cds-interactive); padding-left: calc(var(--cds-spacing-06) - 3px); }
+.case-row .id-row { display: flex; align-items: center; justify-content: space-between; gap: var(--cds-spacing-03); margin-bottom: var(--cds-spacing-03); }
+.case-row .meta { color: var(--cds-text-secondary); margin-top: var(--cds-spacing-02); }
+.case-row .tags { display: flex; gap: var(--cds-spacing-03); align-items: center; }
+
+/* detail column */
+.section { padding: var(--cds-spacing-07) var(--cds-spacing-08); border-bottom: 1px solid var(--cds-border-subtle); }
+.section h2 { text-transform: uppercase; letter-spacing: 0.02em; color: var(--cds-text-secondary); margin: 0 0 var(--cds-spacing-05); }
+.section .lede { color: var(--cds-text-secondary); }
+.timeline-chip { display: inline-flex; align-items: center; padding: var(--cds-spacing-02) var(--cds-spacing-04); background: var(--cds-layer-01); border: 1px solid var(--cds-border-subtle-01); border-radius: 2px; color: var(--cds-text-secondary); margin: 0 var(--cds-spacing-03) var(--cds-spacing-03) 0; }
+.timeline-row { display: flex; flex-wrap: wrap; margin-bottom: var(--cds-spacing-05); }
+
+.meter-track { height: 8px; background: var(--cds-layer-01); border-radius: 0; overflow: hidden; margin: var(--cds-spacing-05) 0 var(--cds-spacing-04); }
+.meter-fill { height: 100%; transition: width 240ms cubic-bezier(0.2, 0, 0.38, 0.9); }
+
+.evidence-item { padding: var(--cds-spacing-05) 0; border-bottom: 1px solid var(--cds-border-subtle); }
+.evidence-item:last-child { border-bottom: none; }
+.evidence-item .src { text-transform: uppercase; letter-spacing: 0.02em; color: var(--cds-text-placeholder); margin-bottom: var(--cds-spacing-02); font-family: 'IBM Plex Mono', monospace; }
+
+.nba-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--cds-spacing-06); }
+.nba-col h3 { text-transform: uppercase; letter-spacing: 0.02em; color: var(--cds-text-secondary); margin: 0 0 var(--cds-spacing-04); }
+.action-row { padding: var(--cds-spacing-04) 0; border-bottom: 1px solid var(--cds-border-subtle); }
+.action-row:last-child { border-bottom: none; }
+.action-row .name { display: flex; align-items: center; gap: var(--cds-spacing-03); margin-bottom: var(--cds-spacing-02); }
+.action-row .reason { color: var(--cds-text-secondary); }
+.action-row .buttons { margin-top: var(--cds-spacing-03); display: flex; gap: var(--cds-spacing-03); }
+.what-changed { margin-top: var(--cds-spacing-05); padding-top: var(--cds-spacing-05); border-top: 1px solid var(--cds-border-subtle); color: var(--cds-text-secondary); }
+
+.sar-narrative { white-space: pre-wrap; background: var(--cds-layer-01); padding: var(--cds-spacing-05); border-left: 3px solid var(--cds-support-warning); margin: var(--cds-spacing-05) 0; }
+
+.empty-state { padding: var(--cds-spacing-10) var(--cds-spacing-08); color: var(--cds-text-secondary); text-align: center; }
+
+/* chat / investigate panel */
+.col.chat { display: flex; flex-direction: column; }
+.chat-log { flex: 1; overflow-y: auto; padding: var(--cds-spacing-06); }
+.chat-msg { padding: var(--cds-spacing-04) 0; border-bottom: 1px solid var(--cds-border-subtle); }
+.chat-msg.user { color: var(--cds-text-secondary); }
+.chat-form { border-top: 1px solid var(--cds-border-subtle); padding: var(--cds-spacing-06); display: grid; gap: var(--cds-spacing-05); }
+.field-group { display: grid; gap: var(--cds-spacing-02); }
+.field-group label { color: var(--cds-text-secondary); }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--cds-border-subtle-01); border-top-color: var(--cds-interactive); border-radius: 50%; animation: spin 700ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; }
+  .case-row, .meter-fill { transition: none; }
+}

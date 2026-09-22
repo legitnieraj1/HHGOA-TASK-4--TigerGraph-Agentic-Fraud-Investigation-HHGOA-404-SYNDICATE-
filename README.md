@@ -44,14 +44,16 @@ Built for the TigerGraph × Hacker House Goa / IEEE Agentic Fraud Investigation 
 ## Setup
 
 1. **Python 3.11**, then `make venv` (creates `.venv`, installs `pyproject.toml`).
-2. **TigerGraph Savanna**: create a workspace at https://savanna.tgcloud.io (auto-suspend/resume on). Get its
+2. **Node.js 20+** (dashboard build only -- `ui/` is a small Vite project on `@carbon/styles` +
+   `@carbon/web-components`; `make api` runs `npm install && npm run build` in `ui/` for you).
+3. **TigerGraph Savanna**: create a workspace at https://savanna.tgcloud.io (auto-suspend/resume on). Get its
    host from the Admin Portal URL's `domain=` param (the Connect dropdown doesn't show it), and a database
    secret from **Database Secrets**.
-3. **Dataset**: place the `HHGOA_IEEE` files in `data/raw/` (`README.md`, `case_pack.csv`,
+4. **Dataset**: place the `HHGOA_IEEE` files in `data/raw/` (`README.md`, `case_pack.csv`,
    `closed_cases_history.csv`, `identity.csv`, `transactions.csv`).
-4. Copy `.env.example` to `.env` and fill in `TG_HOST`, `TG_GRAPH=FraudGraph`, `TG_SECRET`, and an LLM key
+5. Copy `.env.example` to `.env` and fill in `TG_HOST`, `TG_GRAPH=FraudGraph`, `TG_SECRET`, and an LLM key
    (`GEMINI_API_KEY` and/or `NVIDIA_API_KEY` -- see `LLM_CHAIN` for the fallback order).
-5. `mcp/.env` mirrors the TigerGraph config for `tigergraph-mcp` (see `mcp/README.md`).
+6. `mcp/.env` mirrors the TigerGraph config for `tigergraph-mcp` (see `mcp/README.md`).
 
 ## Reproduce everything
 

@@ -47,5 +47,8 @@ memory-eval:           ## Phase 6: case-memory ablation (with vs without same-ca
 benchmark:             ## Phase 8: run all 20 case_pack cases -> cases/*.json
 	$(VENV)/python scripts/60_run_benchmark.py
 
-api:                    ## Phase 7: serve the dashboard + API at http://127.0.0.1:8080
+ui-build:               ## Phase 7: build the dashboard (real @carbon/styles + @carbon/web-components via Vite)
+	cd ui && npm install && npm run build
+
+api: ui-build           ## Phase 7: serve the dashboard + API at http://127.0.0.1:8080
 	$(VENV)/uvicorn api.main:app --port 8080

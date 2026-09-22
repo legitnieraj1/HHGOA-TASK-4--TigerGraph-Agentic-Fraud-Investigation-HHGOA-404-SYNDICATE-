@@ -136,4 +136,4 @@ def investigate(req: InvestigateRequest):
     return answer
 
 
-app.mount("/", StaticFiles(directory=str(ROOT / "ui"), html=True), name="ui")
+app.mount("/", StaticFiles(directory=str(ROOT / "ui" / "dist"), html=True), name="ui")
