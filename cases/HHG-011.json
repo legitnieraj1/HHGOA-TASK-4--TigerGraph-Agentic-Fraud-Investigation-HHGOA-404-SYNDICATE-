@@ -1,0 +1,175 @@
+{
+  "case_id": "HHG-011",
+  "case": {
+    "status": "closed_fraud",
+    "verdict": "fraud",
+    "fraud_probability": 0.8,
+    "pattern": "card_not_present_new_device",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3583368"
+    ],
+    "first_suspicious_txn_id": "3583368",
+    "connected_card_ids": [],
+    "connected_device_profiles": [
+      "SM-G610F Build/NRD90M |  | chrome 66.0 for android | "
+    ],
+    "exposure_usd": 131.3,
+    "evidence": [
+      {
+        "claim": "Trigger is a customer complaint denying the transaction: \"Customer C11923 message: 'I never made this $131.30 purchase. Please check my card.' Refers to 3583368.\"",
+        "source": "customer",
+        "ref": "trigger",
+        "entity_ids": [
+          "3583368"
+        ]
+      },
+      {
+        "claim": "Flagged transaction 3583368: $131.30 C on online, risk_score 0.39, 2016-12-29 03:27:44",
+        "source": "graph",
+        "ref": "query:get_transaction",
+        "entity_ids": [
+          "3583368"
+        ]
+      },
+      {
+        "claim": "Episode reconstruction: 1 of 52 transactions on C11923-K2 within +-24h scored >= 0.5 fraud-propensity on the same channel",
+        "source": "graph",
+        "ref": "query:card_window(card=C11923-K2,+-24h)+offline_propensity",
+        "entity_ids": [
+          "3583368"
+        ]
+      },
+      {
+        "claim": "Card-testing probe: 2 tiny (<$5) online auths within 60 min (10 in +-168h), strict=False",
+        "source": "graph",
+        "ref": "query:pattern_card_testing(card=C11923-K2)",
+        "entity_ids": [
+          "3582142",
+          "3582175",
+          "3582178",
+          "3582327",
+          "3582338",
+          "3582375",
+          "3582413",
+          "3582602",
+          "3582671",
+          "3582738",
+          "3582868",
+          "3582897",
+          "3583101",
+          "3583140",
+          "3583199",
+          "3583229",
+          "3583348",
+          "3583368",
+          "3583406",
+          "3583435",
+          "3583494",
+          "3583644",
+          "3583670",
+          "3584003",
+          "3584153",
+          "3584155",
+          "3584401",
+          "3584460",
+          "3584516",
+          "3584693",
+          "3584706",
+          "3584859",
+          "3584985",
+          "3585055",
+          "3585064",
+          "3585345"
+        ]
+      },
+      {
+        "claim": "Device-ring probe: device profile seen on 3 distinct cards, 3 transactions, in the last 120 days ({'': 3}, {'Found': 1, 'New': 2})",
+        "source": "graph",
+        "ref": "query:pattern_device_ring(device='SM-G610F Build/NRD90M |  | chrome 66.0 for android | ',days=120)",
+        "entity_ids": []
+      },
+      {
+        "claim": "Case memory: 11 prior closed case(s) on this customer's cards, most recent none (cleared) opened 2016-10-12 10:17:15",
+        "source": "graph",
+        "ref": "query:customer_profile(customer=C11923)",
+        "entity_ids": [
+          "CC-4743",
+          "CC-4501",
+          "CC-3905",
+          "CC-3206",
+          "CC-3039"
+        ]
+      },
+      {
+        "claim": "GraphRAG semantic retrieval surfaced 3 similar prior case(s) by case narrative (not just same-card history): CC-2578, CC-2410, CC-2476",
+        "source": "graph",
+        "ref": "query:vector_search_cases",
+        "entity_ids": [
+          "CC-2578",
+          "CC-2410",
+          "CC-2476"
+        ]
+      },
+      {
+        "claim": "Retrieved policy/typology guidance: Card-not-present fraud from a new device (pattern:card_not_present_new_device)",
+        "source": "document",
+        "ref": "pattern:card_not_present_new_device",
+        "entity_ids": []
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-2410",
+      "CC-2476",
+      "CC-2578",
+      "CC-2799",
+      "CC-3039",
+      "CC-3206",
+      "CC-3905",
+      "CC-4501"
+    ],
+    "summary": "Case HHG-011 was initiated following a customer report from C11923 denying a $131.30 online transaction (3583368). Investigation confirms a 'card_not_present_new_device' pattern, as the transaction originated from a device marked as 'New' for the account. Evidence indicates a broader card-testing probe involving multiple small authorizations, and the device profile has been linked to activity across three distinct cards. Given the customer's denial and the identified fraud patterns, the transaction is classified as confirmed fraud with an exposure of $131.30.",
+    "written_to_graph": true,
+    "graph_case_id": "HHG-011"
+  },
+  "evidence_requests": [],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: customer denied the transaction"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2"
+      }
+    ],
+    "final": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: customer denied the transaction"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2"
+      }
+    ],
+    "what_changed": "nothing"
+  },
+  "sar": {
+    "file": false,
+    "reason": "Fraud not confirmed/strongly suspected, or none of policy s.3a's filing conditions (exposure > $1,000, shared origin, coordinated/undocumented) are met",
+    "narrative": "",
+    "subjects": [],
+    "total_amount_usd": 0,
+    "activity_dates": []
+  },
+  "stop_reason": "The investigation concluded after confirming the transaction as fraudulent based on the customer's report and the identification of associated card-testing and device-ring patterns.",
+  "tool_calls": 14,
+  "tokens": 2086,
+  "latency_s": 21.2
+}

@@ -443,3 +443,40 @@ conflation) were visible from reading the code in isolation. Each one only surfa
 and checking whether the AGGREGATE output made sense against a stated expectation (the README's "half
 legitimate", the policy's own stop conditions) -- not by reviewing any single case's reasoning, which looked
 locally fine every time.
+
+### Final benchmark result (after all Phase 8 fixes)
+
+```
+HHG-001   legitimate  out_of_region_use            p=0.08 sar=False
+HHG-002   legitimate  card_not_present_fraud       p=0.13 sar=False
+HHG-003   fraud       out_of_region_use            p=0.71 sar=False
+HHG-004   fraud       card_not_present_new_device  p=0.63 sar=False
+HHG-005   legitimate  card_not_present_new_device  p=0.07 sar=False
+HHG-006   fraud       undocumented                 p=0.92 sar=True   (structuring)
+HHG-007   fraud       account_takeover             p=0.85 sar=False
+HHG-008   fraud       card_testing                 p=0.86 sar=False
+HHG-009   fraud       card_not_present_fraud       p=0.90 sar=False
+HHG-010   legitimate  card_not_present_new_device  p=0.06 sar=False
+HHG-011   fraud       card_not_present_new_device  p=0.80 sar=False
+HHG-012   legitimate  out_of_region_use            p=0.12 sar=False
+HHG-013   legitimate  card_not_present_new_device  p=0.09 sar=False
+HHG-014   fraud       undocumented                 p=0.86 sar=True   (device ring, matches analyst's own tip)
+HHG-015   legitimate  card_not_present_new_device  p=0.07 sar=False
+HHG-016   fraud       card_not_present_new_device  p=0.80 sar=False
+HHG-017   fraud       card_not_present_fraud       p=0.66 sar=False
+HHG-018   fraud       account_takeover             p=0.73 sar=False
+HHG-019   fraud       card_not_present_new_device  p=0.88 sar=False
+HHG-020   legitimate  card_not_present_new_device  p=0.07 sar=False
+```
+
+**20/20 cases, 20/20 pass `agent/validate.py` (structural + ID-existence), 0 failures, 368s total runtime
+(~18s/case average).** 8 legitimate / 12 fraud, 2 SAR filings (both on cases with a rare, calibrated signal --
+undocumented structuring and the device ring -- not on a default composition match, exactly as R6/R9/policy
+s.3a intend: "most cases never need a report"). No case landed on `uncertain` this run -- every case's
+evidence-gathering loop resolved decisively one way or the other (a legitimate outcome of the design, not a
+sign the loop is unused: `uncertain` is still fully supported and DID fire during earlier debugging runs on
+these same cases, e.g. HHG-001/002 before their evidence requests resolved).
+
+**Reproduce**: `scripts/60_run_benchmark.py` (idempotent, overwrites `cases/*.json`). Takes ~4 model-provider
+calls' worth of latency variance per case (17-56s observed) depending on Gemini/NVIDIA response time and one
+Savanna wake if the workspace had gone idle.

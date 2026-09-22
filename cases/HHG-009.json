@@ -1,0 +1,107 @@
+{
+  "case_id": "HHG-009",
+  "case": {
+    "status": "closed_fraud",
+    "verdict": "fraud",
+    "fraud_probability": 0.9,
+    "pattern": "card_not_present_fraud",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3581141"
+    ],
+    "first_suspicious_txn_id": "3581141",
+    "connected_card_ids": [],
+    "connected_device_profiles": [],
+    "exposure_usd": 30.02,
+    "evidence": [
+      {
+        "claim": "Trigger is a customer complaint denying the transaction: \"Customer C08299 message: 'I never made this $30.02 purchase. Please check my card.' Refers to 3581141.\"",
+        "source": "customer",
+        "ref": "trigger",
+        "entity_ids": [
+          "3581141"
+        ]
+      },
+      {
+        "claim": "Flagged transaction 3581141: $30.02 S on online, risk_score 0.28, 2016-12-28 12:10:53",
+        "source": "graph",
+        "ref": "query:get_transaction",
+        "entity_ids": [
+          "3581141"
+        ]
+      },
+      {
+        "claim": "Episode reconstruction: 1 of 1 transactions on C08299-K1 within +-24h scored >= 0.5 fraud-propensity on the same channel",
+        "source": "graph",
+        "ref": "query:card_window(card=C08299-K1,+-24h)+offline_propensity",
+        "entity_ids": [
+          "3581141"
+        ]
+      },
+      {
+        "claim": "GraphRAG semantic retrieval surfaced 3 similar prior case(s) by case narrative (not just same-card history): CC-2578, CC-3386, CC-3415",
+        "source": "graph",
+        "ref": "query:vector_search_cases",
+        "entity_ids": [
+          "CC-2578",
+          "CC-3386",
+          "CC-3415"
+        ]
+      },
+      {
+        "claim": "Retrieved policy/typology guidance: Card-not-present fraud (pattern:card_not_present_fraud)",
+        "source": "document",
+        "ref": "pattern:card_not_present_fraud",
+        "entity_ids": []
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-2578",
+      "CC-3386",
+      "CC-3415"
+    ],
+    "summary": "Case HHG-009 was initiated following a customer complaint from C08299 regarding an unauthorized $30.02 online transaction (3581141) dated 2016-12-28. Investigation confirms the transaction occurred via an online channel and aligns with the card-not-present fraud typology. While the transaction risk score was 0.28, the customer's explicit denial and the identified pattern support a fraud verdict with a 0.90 probability. Similar prior cases (CC-2578, CC-3386, CC-3415) were identified, though the current episode is limited to this single transaction.",
+    "written_to_graph": true,
+    "graph_case_id": "HHG-009"
+  },
+  "evidence_requests": [],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: customer denied the transaction"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2"
+      }
+    ],
+    "final": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: customer denied the transaction"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2"
+      }
+    ],
+    "what_changed": "nothing"
+  },
+  "sar": {
+    "file": false,
+    "reason": "Fraud not confirmed/strongly suspected, or none of policy s.3a's filing conditions (exposure > $1,000, shared origin, coordinated/undocumented) are met",
+    "narrative": "",
+    "subjects": [],
+    "total_amount_usd": 0,
+    "activity_dates": []
+  },
+  "stop_reason": "The investigation concluded as the transaction was confirmed as fraud based on the customer's report and alignment with established card-not-present fraud patterns.",
+  "tool_calls": 13,
+  "tokens": 1457,
+  "latency_s": 11.9
+}

@@ -1,0 +1,104 @@
+{
+  "case_id": "HHG-020",
+  "case": {
+    "status": "closed_legitimate",
+    "verdict": "legitimate",
+    "fraud_probability": 0.07,
+    "pattern": "card_not_present_new_device",
+    "pattern_description": "",
+    "affected_txn_ids": [],
+    "first_suspicious_txn_id": "",
+    "connected_card_ids": [],
+    "connected_device_profiles": [],
+    "exposure_usd": 0.0,
+    "evidence": [
+      {
+        "claim": "Flagged transaction 3509359: $125.08 R on online, risk_score 0.52, 2016-12-03 06:04:26",
+        "source": "graph",
+        "ref": "query:get_transaction",
+        "entity_ids": [
+          "3509359"
+        ]
+      },
+      {
+        "claim": "Episode reconstruction: 1 of 4 transactions on C12265-K2 within +-24h scored >= 0.5 fraud-propensity on the same channel",
+        "source": "graph",
+        "ref": "query:card_window(card=C12265-K2,+-24h)+offline_propensity",
+        "entity_ids": [
+          "3509359"
+        ]
+      },
+      {
+        "claim": "Device-ring probe: device profile seen on 116 distinct cards, 180 transactions, in the last 120 days ({'IP_PROXY:ANONYMOUS': 5, 'IP_PROXY:HIDDEN': 1, '': 172, 'IP_PROXY:TRANSPARENT': 2}, {'Found': 99, 'Unknown': 1, 'New': 80})",
+        "source": "graph",
+        "ref": "query:pattern_device_ring(device='Trident/7.0 | Windows 10 | ie 11.0 for desktop | 1920x1080',days=120)",
+        "entity_ids": []
+      },
+      {
+        "claim": "Case memory: 2 prior closed case(s) on this customer's cards, most recent account_takeover (confirmed_fraud) opened 2016-08-22 05:40:17",
+        "source": "graph",
+        "ref": "query:customer_profile(customer=C12265)",
+        "entity_ids": [
+          "CC-2447",
+          "CC-2277"
+        ]
+      },
+      {
+        "claim": "GraphRAG semantic retrieval surfaced 3 similar prior case(s) by case narrative (not just same-card history): CC-2578, CC-5515, CC-2410",
+        "source": "graph",
+        "ref": "query:vector_search_cases",
+        "entity_ids": [
+          "CC-2578",
+          "CC-5515",
+          "CC-2410"
+        ]
+      },
+      {
+        "claim": "Retrieved policy/typology guidance: Card-not-present fraud from a new device (pattern:card_not_present_new_device)",
+        "source": "document",
+        "ref": "pattern:card_not_present_new_device",
+        "entity_ids": []
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-2277",
+      "CC-2410",
+      "CC-2447",
+      "CC-2578",
+      "CC-5515"
+    ],
+    "summary": "Transaction 3509359 for $125.08 was flagged by the risk model with a score of 0.52 due to a 'card_not_present_new_device' pattern. While the device profile has been associated with 116 distinct cards and 180 transactions in the last 120 days, the customer has a history of prior fraud, including a confirmed account takeover on 2016-08-22. Despite these indicators, the transaction is assessed as legitimate with a fraud probability of 0.07. No further suspicious activity was identified in the immediate 24-hour window.",
+    "written_to_graph": true,
+    "graph_case_id": "HHG-020"
+  },
+  "evidence_requests": [],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "CLOSE_NO_FRAUD",
+        "route": "auto",
+        "reason": "fraud probability 0.07 is low; no rule indicates otherwise"
+      }
+    ],
+    "final": [
+      {
+        "action": "CLOSE_NO_FRAUD",
+        "route": "auto",
+        "reason": "fraud probability 0.07 is low; no rule indicates otherwise"
+      }
+    ],
+    "what_changed": "nothing"
+  },
+  "sar": {
+    "file": false,
+    "reason": "R3/policy: activity confirmed legitimate or fraud probability too low to warrant a filing",
+    "narrative": "",
+    "subjects": [],
+    "total_amount_usd": 0,
+    "activity_dates": []
+  },
+  "stop_reason": "The investigation concluded that the transaction is legitimate based on the low fraud probability score of 0.07, despite the device being marked as new for the account.",
+  "tool_calls": 14,
+  "tokens": 1649,
+  "latency_s": 18.5
+}

@@ -1,0 +1,105 @@
+{
+  "case_id": "HHG-015",
+  "case": {
+    "status": "closed_legitimate",
+    "verdict": "legitimate",
+    "fraud_probability": 0.07,
+    "pattern": "card_not_present_new_device",
+    "pattern_description": "",
+    "affected_txn_ids": [],
+    "first_suspicious_txn_id": "",
+    "connected_card_ids": [],
+    "connected_device_profiles": [],
+    "exposure_usd": 0.0,
+    "evidence": [
+      {
+        "claim": "Flagged transaction 3464869: $599.94 R on online, risk_score 0.77, 2016-11-17 14:03:36",
+        "source": "graph",
+        "ref": "query:get_transaction",
+        "entity_ids": [
+          "3464869"
+        ]
+      },
+      {
+        "claim": "Episode reconstruction: 1 of 4 transactions on C03042-K1 within +-24h scored >= 0.5 fraud-propensity on the same channel",
+        "source": "graph",
+        "ref": "query:card_window(card=C03042-K1,+-24h)+offline_propensity",
+        "entity_ids": [
+          "3464869"
+        ]
+      },
+      {
+        "claim": "Device-ring probe: device profile seen on 5 distinct cards, 5 transactions, in the last 120 days ({'': 5}, {'Found': 3, 'New': 2})",
+        "source": "graph",
+        "ref": "query:pattern_device_ring(device='Trident/7.0 | Windows 8.1 | ie 11.0 for desktop | 1680x1050',days=120)",
+        "entity_ids": []
+      },
+      {
+        "claim": "Case memory: 3 prior closed case(s) on this customer's cards, most recent card_not_present_new_device (confirmed_fraud) opened 2016-09-24 10:19:55",
+        "source": "graph",
+        "ref": "query:customer_profile(customer=C03042)",
+        "entity_ids": [
+          "CC-3886",
+          "CC-1313",
+          "CC-0615"
+        ]
+      },
+      {
+        "claim": "GraphRAG semantic retrieval surfaced 3 similar prior case(s) by case narrative (not just same-card history): CC-2992, CC-0019, CC-5515",
+        "source": "graph",
+        "ref": "query:vector_search_cases",
+        "entity_ids": [
+          "CC-2992",
+          "CC-0019",
+          "CC-5515"
+        ]
+      },
+      {
+        "claim": "Retrieved policy/typology guidance: Card-not-present fraud from a new device (pattern:card_not_present_new_device)",
+        "source": "document",
+        "ref": "pattern:card_not_present_new_device",
+        "entity_ids": []
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-0019",
+      "CC-0615",
+      "CC-2992",
+      "CC-3886",
+      "CC-5515"
+    ],
+    "summary": "Transaction 3464869 for $599.94 was flagged by the risk model with a score of 0.77 due to a 'card_not_present_new_device' pattern. While the device profile has been associated with 5 distinct cards in the last 120 days, the customer profile shows a history of 3 prior closed cases, including a confirmed fraud case involving the same pattern. Despite these indicators, the current investigation concludes the transaction is legitimate with a fraud probability of 0.07. No further action is required at this time.",
+    "written_to_graph": true,
+    "graph_case_id": "HHG-015"
+  },
+  "evidence_requests": [],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "CLOSE_NO_FRAUD",
+        "route": "auto",
+        "reason": "fraud probability 0.07 is low; no rule indicates otherwise"
+      }
+    ],
+    "final": [
+      {
+        "action": "CLOSE_NO_FRAUD",
+        "route": "auto",
+        "reason": "fraud probability 0.07 is low; no rule indicates otherwise"
+      }
+    ],
+    "what_changed": "nothing"
+  },
+  "sar": {
+    "file": false,
+    "reason": "R3/policy: activity confirmed legitimate or fraud probability too low to warrant a filing",
+    "narrative": "",
+    "subjects": [],
+    "total_amount_usd": 0,
+    "activity_dates": []
+  },
+  "stop_reason": "The investigation concluded the transaction is legitimate based on a low fraud probability assessment of 0.07.",
+  "tool_calls": 14,
+  "tokens": 1584,
+  "latency_s": 16.8
+}

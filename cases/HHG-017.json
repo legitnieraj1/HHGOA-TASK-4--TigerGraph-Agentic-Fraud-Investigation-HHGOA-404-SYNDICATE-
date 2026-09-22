@@ -1,0 +1,138 @@
+{
+  "case_id": "HHG-017",
+  "case": {
+    "status": "closed_fraud",
+    "verdict": "fraud",
+    "fraud_probability": 0.66,
+    "pattern": "card_not_present_fraud",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3450629"
+    ],
+    "first_suspicious_txn_id": "3450629",
+    "connected_card_ids": [
+      "C02180-K1",
+      "C02975-K1",
+      "C04230-K1",
+      "C07466-K2",
+      "C08412-K1",
+      "C09873-K1",
+      "C11204-K1"
+    ],
+    "connected_device_profiles": [
+      "Windows | Windows 10 | chrome 65.0 | 1920x1080"
+    ],
+    "exposure_usd": 100.09,
+    "evidence": [
+      {
+        "claim": "Flagged transaction 3450629: $100.09 R on online, risk_score 0.57, 2016-11-11 23:46:24",
+        "source": "graph",
+        "ref": "query:get_transaction",
+        "entity_ids": [
+          "3450629"
+        ]
+      },
+      {
+        "claim": "Episode reconstruction: 1 of 3 transactions on C04570-K1 within +-24h scored >= 0.5 fraud-propensity on the same channel",
+        "source": "graph",
+        "ref": "query:card_window(card=C04570-K1,+-24h)+offline_propensity",
+        "entity_ids": [
+          "3450629"
+        ]
+      },
+      {
+        "claim": "Device-ring probe: device profile seen on 164 distinct cards, 299 transactions, in the last 120 days ({'IP_PROXY:ANONYMOUS': 7, 'IP_PROXY:HIDDEN': 1, '': 285, 'IP_PROXY:TRANSPARENT': 6}, {'New': 90, 'Unknown': 1, 'Found': 208})",
+        "source": "graph",
+        "ref": "query:pattern_device_ring(device='Windows | Windows 10 | chrome 65.0 | 1920x1080',days=120)",
+        "entity_ids": [
+          "C11204-K1",
+          "C02180-K1",
+          "C04230-K1",
+          "C02975-K1",
+          "C07466-K2",
+          "C08412-K1",
+          "C09873-K1"
+        ]
+      },
+      {
+        "claim": "Case memory: 1 prior closed case(s) on this customer's cards, most recent none (cleared) opened 2016-07-29 01:30:41",
+        "source": "graph",
+        "ref": "query:customer_profile(customer=C04570)",
+        "entity_ids": [
+          "CC-1383"
+        ]
+      },
+      {
+        "claim": "GraphRAG semantic retrieval surfaced 3 similar prior case(s) by case narrative (not just same-card history): CC-2992, CC-4415, CC-0019",
+        "source": "graph",
+        "ref": "query:vector_search_cases",
+        "entity_ids": [
+          "CC-2992",
+          "CC-4415",
+          "CC-0019"
+        ]
+      },
+      {
+        "claim": "Retrieved policy/typology guidance: Card-not-present fraud (pattern:card_not_present_fraud)",
+        "source": "document",
+        "ref": "pattern:card_not_present_fraud",
+        "entity_ids": []
+      },
+      {
+        "claim": "Evidence request (analyst_info): Analyst confirms: 7 other card(s) linked through this device profile have prior confirmed-fraud cases; recommends treating this as coordinated.",
+        "source": "graph",
+        "ref": "evidence_request:1",
+        "entity_ids": []
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-0019",
+      "CC-2992",
+      "CC-4415"
+    ],
+    "summary": "Case HHG-017 involves a $100.09 online transaction (3450629) flagged with a risk score of 0.57. The device profile associated with this transaction has been linked to 164 distinct cards and 299 transactions over the last 120 days. Analyst review confirms that seven other cards linked to this specific device profile have prior confirmed fraud cases, indicating a coordinated attack. Based on this evidence, the transaction is classified as fraud.",
+    "written_to_graph": true,
+    "graph_case_id": "HHG-017"
+  },
+  "evidence_requests": [
+    {
+      "type": "analyst_info",
+      "asked_after_step": 1,
+      "assumed_response": "Analyst confirms: 7 other card(s) linked through this device profile have prior confirmed-fraud cases; recommends treating this as coordinated."
+    }
+  ],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "MONITOR_CARD",
+        "route": "auto",
+        "reason": "fraud probability 0.16; no specific rule fired, default to monitoring"
+      }
+    ],
+    "final": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: customer denied the transaction"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2"
+      }
+    ],
+    "what_changed": "the analyst confirmed a connection to other confirmed-fraud activity, raising probability to 0.66; added BLOCK_CARD, CREATE_CASE; dropped MONITOR_CARD."
+  },
+  "sar": {
+    "file": false,
+    "reason": "Fraud not confirmed/strongly suspected, or none of policy s.3a's filing conditions (exposure > $1,000, shared origin, coordinated/undocumented) are met",
+    "narrative": "",
+    "subjects": [],
+    "total_amount_usd": 0,
+    "activity_dates": []
+  },
+  "stop_reason": "The investigation concluded that the transaction is part of a coordinated fraud ring based on the device profile's history of confirmed fraudulent activity across multiple linked cards.",
+  "tool_calls": 14,
+  "tokens": 1818,
+  "latency_s": 18.1
+}
