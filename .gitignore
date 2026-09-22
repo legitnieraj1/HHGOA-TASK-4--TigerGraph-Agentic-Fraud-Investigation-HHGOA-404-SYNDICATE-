@@ -12,3 +12,5 @@ data/profile/*.parquet
 .vectors_applied
 data/export/
 data/models/
+mcp/tigergraph-mcp/
+mcp/.env

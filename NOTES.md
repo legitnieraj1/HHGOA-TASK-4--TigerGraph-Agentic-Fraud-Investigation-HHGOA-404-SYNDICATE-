@@ -183,3 +183,50 @@ count without per-name verification.
   correctly rejected by `ring_strength()` and did NOT flip to `undocumented` -- confirms the detector isn't
   over-firing on "popular new phone this holiday season" coincidences, which the Jul-Oct-only calibration sample
   could plausibly have missed since the case pack is Nov-Dec.
+
+## Phase 3: TigerGraph MCP - DONE 2026-09-22
+
+- Used the official `pip install tigergraph-mcp` (v1.0.3, pyTigerGraph 2.0.4) rather than hand-rolling a
+  generic GSQL/REST tool wrapper -- it already exposes exactly what's needed: `run_installed_query` (our 12
+  queries), `gsql` (raw), `get_neighbors`, vector ops (`upsert_vectors`, `search_top_k_similarity`,
+  `add_vector_attribute` -- for Phase 4), schema/stats tools. 69 tools total. Cloned to `mcp/tigergraph-mcp/`
+  for reference/docs only (git-ignored, its own nested `.git`); not vendored into our repo.
+- Config: `mcp/.env` (git-ignored) with `TG_HOST` (needs `https://` scheme, unlike our root `.env`),
+  `TG_GRAPHNAME=FraudGraph`, `TG_SECRET`, `TG_TGCLOUD=true`. Verified pyTigerGraph's secret-based auth
+  (`gsqlSecret=`) against Savanna directly: mints a token via the same `/gsql/v1/tokens` flow our own
+  `tigergraph.client.TG` uses, `getVertexCount("Customer")` returned 13,553 (matches Phase 1 reconciliation).
+  Subject to the same wake-latency behaviour as our own client (NOTES.md Phase 2): the first call after idle
+  can hit a 502 even a few seconds after our own `wake()` confirms `/restpp/echo` is ready, because the GSQL
+  auth backend can lag slightly behind the REST gateway. No fix needed here, just don't be surprised by one
+  transient retry.
+- `mcp/launch.sh` starts the server over stdio; `agent/tools/graph_mcp.py` opens ONE session per agent run
+  (`graph_mcp_tools()` context manager) and loads LangChain tool objects via `langchain-mcp-adapters`, per the
+  server's own "reuse one process" guidance -- not a fresh subprocess per call.
+
+### Important finding: Gemini 3.x + OpenAI-compat endpoint breaks multi-turn tool calling
+- `ChatOpenAI(base_url=GEMINI_BASE_URL, ...)` (the wrapper used for the earlier LLM-chain probing, NOTES.md
+  "LLM chain update") works for a SINGLE tool call but fails the *second* turn of a multi-step tool-calling
+  loop: `400 Function call is missing a thought_signature`. Gemini 3's function-calling protocol requires an
+  opaque `thought_signature` to be echoed back on every subsequent turn, and LangChain's generic OpenAI chat
+  wrapper doesn't preserve that Gemini-specific field.
+- **Fix: use `langchain-google-genai`'s native `ChatGoogleGenerativeAI` for Gemini**, not the OpenAI-compat
+  shim, for ANY node that does more than one tool call in a row (which is most of the agent). Installed
+  (`langchain-google-genai==4.4.0`). Confirmed working through a real multi-step MCP tool-calling loop
+  (`create_react_agent` + 2 sequential `run_installed_query` calls, correct results both times, even
+  self-recovered from one transient "Access Denied, empty token" race on the very first call after the MCP
+  server process started).
+- **Consequence for `llm/` (Phase 5)**: the provider wrapper cannot be "one OpenAI-compatible client, swap
+  base_url" as originally planned. It needs a per-provider LangChain chat-model class: `ChatGoogleGenerativeAI`
+  for Gemini, `ChatOpenAI` (base_url override) for NVIDIA -- NVIDIA's raw `chat.completions` API worked fine
+  for single-turn tool calls in the earlier probe, but has not yet been tested through a multi-step LangGraph
+  tool loop; test that before relying on it as the fallback for agent nodes, not just for JSON-only synthesis
+  calls. The single-shot JSON-mode and plain-text calls (explanation, SAR narrative) are unaffected either way.
+- `create_react_agent` is deprecated in LangGraph 1.0 in favour of `langchain.agents.create_agent`; noted for
+  Phase 5, not fixed now (works fine, just a deprecation warning).
+
+### Phase 3 check (spec-required)
+`tests/test_mcp_direct_smoke.py`: direct (no-LLM) `run_installed_query` calls for `card_neighbourhood` and
+`trace_chain` through the MCP server -- results match the values already validated in Phase 2 exactly.
+`tests/test_mcp_agent_smoke.py`: a real LLM (Gemini 3.6 Flash, native SDK) tool-calls the MCP server for the
+same two queries and reports back correctly: "Card C03528-K1... `SM-G935F...`: 21 other cards... Previous
+Transaction IDs: 3513814, 3512936; Next: 3514461, 3515241" -- exact match to the manually-verified numbers.
