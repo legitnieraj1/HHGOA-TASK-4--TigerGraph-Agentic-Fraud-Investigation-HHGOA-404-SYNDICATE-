@@ -49,6 +49,13 @@ class RuleResult:
     fired_rules: list = field(default_factory=list)
 
     def add(self, action, reason, exposure_usd=0.0):
+        """De-duplicates by action: more than one rule (e.g. R6 and R9) can independently recommend the same
+        action -- the answer format wants each action once, ordered by what happens first, so a second recommend
+        of an already-present action merges its reason onto the first instead of appending a duplicate."""
+        existing = next((r for r in self.recommendations if r.action == action), None)
+        if existing:
+            existing.reason = f"{existing.reason}; also {reason}"
+            return
         route = route_for(action, exposure_usd)
         self.recommendations.append(Recommendation(action, route, reason))
 

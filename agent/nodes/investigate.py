@@ -7,4 +7,4 @@ from detectors.evidence import build
 
 def run(state: dict, tg) -> dict:
     bundle = build(tg, state["flagged_txn_id"], state["card_id"], state["customer_id"])
-    return {"evidence_bundle": bundle, "evidence": list(bundle["evidence"])}
+    return {"evidence_bundle": bundle, "evidence": list(state.get("evidence", [])) + list(bundle["evidence"])}

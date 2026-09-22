@@ -18,7 +18,10 @@ def run(state: dict) -> dict:
     }
     out = {"assessment": assessment}
     if state["round_no"] == 0 and "nba_initial" not in state:
-        flags = policy_engine.build_flags(bundle, assessment, state["trigger_type"], False, False, False)
+        # customer_report seeds customer_denied=True from the trigger itself (trigger.py), not from a request
+        # this node made -- so it must be reflected in nba_initial too, not just nba_final.
+        flags = policy_engine.build_flags(bundle, assessment, state["trigger_type"], False,
+                                          state.get("customer_confirmed", False), state.get("customer_denied", False))
         rr = policy_engine.evaluate(**flags)
         out["nba_initial"] = [{"action": rec.action, "route": rec.route, "reason": rec.reason} for rec in rr.recommendations]
     return out
