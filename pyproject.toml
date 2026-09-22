@@ -25,6 +25,10 @@ dependencies = [
     "langchain-mcp-adapters>=0.3,<1",
     "langchain-google-genai>=4.4,<5",   # native SDK required: Gemini 3.x OpenAI-compat breaks multi-turn tool calls, see NOTES.md
     "langchain-openai>=1.6,<2",         # NVIDIA fallback (OpenAI-compatible endpoint)
+    # embeddings + UI (Phase 4/7)
+    "sentence-transformers>=3,<4",
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.30,<1",
 ]
 
 [project.optional-dependencies]

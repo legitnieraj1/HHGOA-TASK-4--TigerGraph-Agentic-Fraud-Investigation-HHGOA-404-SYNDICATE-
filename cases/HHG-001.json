@@ -110,5 +110,5 @@
   "stop_reason": "The investigation concluded because the customer confirmed the transaction was legitimate, negating the fraud alert.",
   "tool_calls": 9,
   "tokens": 1498,
-  "latency_s": 17.5
+  "latency_s": 18.5
 }

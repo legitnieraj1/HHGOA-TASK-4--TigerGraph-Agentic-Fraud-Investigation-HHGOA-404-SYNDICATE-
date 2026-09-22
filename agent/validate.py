@@ -66,6 +66,7 @@ def validate(answer: dict) -> list:
     if c.get("verdict") == "legitimate":
         req(c.get("affected_txn_ids") == [], "legitimate verdict: affected_txn_ids must be empty")
         req(c.get("exposure_usd") == 0, "legitimate verdict: exposure_usd must be 0")
+        req(answer.get("sar", {}).get("file") is not True, "legitimate verdict: sar.file must not be true")
 
     for t in c.get("affected_txn_ids", []):
         req(str(t) in ids.txn_ids, f"affected_txn_ids has unknown txn id: {t}")

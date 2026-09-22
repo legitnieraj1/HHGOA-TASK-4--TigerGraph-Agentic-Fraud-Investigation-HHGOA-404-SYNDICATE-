@@ -1,4 +1,4 @@
-.PHONY: venv profile setup-graph export load verify-load install-queries train-propensity mcp-smoke up
+.PHONY: venv profile setup-graph export load verify-load install-queries train-propensity mcp-smoke seed-memory benchmark memory-eval api up
 
 VENV := .venv/bin
 
@@ -35,5 +35,17 @@ mcp-smoke:            ## Phase 3: direct + LLM-tool-call checks against the MCP 
 	$(VENV)/python tests/test_mcp_direct_smoke.py
 	$(VENV)/python tests/test_mcp_agent_smoke.py
 
-up: venv profile setup-graph export load verify-load build-features train-propensity install-queries  ## full pipeline, empty workspace -> ready graph
-	@echo "Graph ready. Next: make mcp-smoke, then the benchmark run (scripts/60_run_benchmark.py, Phase 8, not yet built)."
+up: venv profile setup-graph export load verify-load build-features train-propensity install-queries seed-memory  ## full pipeline, empty workspace -> ready graph
+	@echo "Graph ready. Next: make mcp-smoke, make benchmark, make api."
+
+seed-memory:          ## Phase 4: embed + upsert policy chunks and closed-case summaries as vectors
+	$(VENV)/python scripts/40_seed_memory.py
+
+memory-eval:           ## Phase 6: case-memory ablation (with vs without same-card history)
+	$(VENV)/python scripts/45_memory_eval.py
+
+benchmark:             ## Phase 8: run all 20 case_pack cases -> cases/*.json
+	$(VENV)/python scripts/60_run_benchmark.py
+
+api:                    ## Phase 7: serve the dashboard + API at http://127.0.0.1:8080
+	$(VENV)/uvicorn api.main:app --port 8080

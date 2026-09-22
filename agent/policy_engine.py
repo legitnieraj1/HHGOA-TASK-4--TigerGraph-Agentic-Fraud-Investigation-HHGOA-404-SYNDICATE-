@@ -7,6 +7,8 @@ Policy s.2: 'auto' actions the agent may execute; L1/L2 actions are recommended,
 for a human. This module never executes anything -- agent/tools/actions.py does that, gated by is_executable()."""
 from dataclasses import dataclass, field
 
+from detectors.patterns import ring_strength
+
 AUTO = "auto"
 L1 = "L1"
 L2 = "L2"
@@ -169,7 +171,13 @@ def build_flags(bundle: dict, assessment: dict, trigger_type: str, no_reply_24h:
         purchase_over_100_cleared=bool(testing.get("larger_purchases_after")) and
                                    any(abs(t["amount"]) > 100 for t in bundle["episode"] if t["txn"] in (testing.get("larger_purchases_after") or [])),
         is_card_testing=(pat.pattern == "card_testing"),
-        shared_origin=({"kind": "device profile", **ring} if ring.get("n_cards", 0) >= 3 else None),
+        # R6 must use the SAME calibrated ring filter as detectors/patterns.ring_strength() (New+proxied on
+        # ~all activity, not just "shared by several cards" -- a common device model can have hundreds of
+        # cards and zero fraud significance; base-rate device sharing is not R6's "shared origin", exactly
+        # the bug already fixed once for fraud_linked_connected_cards in detectors/evidence.py, found again
+        # here on a live benchmark run: HHG-005 got a FILE_REPORT recommendation off a device shared by 12
+        # cards that was 0% proxied and 0% New -- an ordinary popular device, not a ring).
+        shared_origin=({"kind": "device profile", **rs} if (rs := ring_strength(ring)) else None),
         disputed_matches_recurring=False,  # see docstring: not detectable from this dataset
         is_undocumented_coordinated=(pat.pattern == "undocumented"),
         evidence_conflicts=bool(pat.alternatives) and pat.confidence <= 0.55,

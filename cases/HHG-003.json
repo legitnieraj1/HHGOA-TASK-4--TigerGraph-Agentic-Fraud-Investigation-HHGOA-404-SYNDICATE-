@@ -122,5 +122,5 @@
   "stop_reason": "The investigation concluded as confirmed fraud following the customer's explicit denial of the transaction and alignment with established out-of-region use patterns.",
   "tool_calls": 9,
   "tokens": 1571,
-  "latency_s": 11.6
+  "latency_s": 7.8
 }

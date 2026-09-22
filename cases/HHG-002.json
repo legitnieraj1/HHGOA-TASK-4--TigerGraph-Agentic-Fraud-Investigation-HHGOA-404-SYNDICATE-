@@ -92,5 +92,5 @@
   "stop_reason": "The transaction was determined to be legitimate based on the lack of suspicious device indicators and the absence of a broader fraud pattern, resulting in a low fraud probability of 0.13.",
   "tool_calls": 13,
   "tokens": 1458,
-  "latency_s": 12.0
+  "latency_s": 12.2
 }
