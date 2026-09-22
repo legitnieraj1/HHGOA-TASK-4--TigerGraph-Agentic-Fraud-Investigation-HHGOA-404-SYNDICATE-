@@ -14,3 +14,5 @@ data/export/
 data/models/
 mcp/tigergraph-mcp/
 mcp/.env
+data/llm_cache/
+outputs/cases_dev/

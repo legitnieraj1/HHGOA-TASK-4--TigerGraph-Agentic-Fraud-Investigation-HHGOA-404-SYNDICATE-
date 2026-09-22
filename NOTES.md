@@ -293,3 +293,84 @@ run; search already returned correct results even mid-rebuild.
 reasons (not just the pattern label -- semantic search does better on a descriptive sentence), searches both
 PolicyDoc and ClosedCase vectors, returns a synthesized, already-cited context block
 (`synthesize_context`) -- never raw rows or full documents, matching the spec's GraphRAG requirement.
+
+## Phase 5: The LangGraph agent - DONE 2026-09-22
+
+### Architecture decision: deterministic pipeline, LLM only for single-shot synthesis
+The 8-node flow (trigger -> investigate -> gather_evidence -> assess_uncertainty <-> gather_more -> next_best_action
+-> explain -> update_memory, `agent/graph.py`) is a real LangGraph `StateGraph` with a genuine conditional loop.
+But INSIDE it, fraud detection, pattern classification, probability, and policy routing are 100% deterministic
+Python (detectors/, agent/policy_engine.py, agent/uncertainty.py) -- the LLM is called exactly once per case,
+in `explain`, for JSON-mode text synthesis (summary, pattern_description, stop_reason, SAR narrative) over
+already-assembled evidence. No tool-calling loop in the graded 20-case pipeline. This was a deliberate call
+given Phase 3's finding (Gemini 3.x breaks multi-turn tool calls over the OpenAI-compat shim): rather than fight
+that in the pipeline that actually gets graded, real multi-turn MCP tool-calling is reserved for the UI's
+conversational panel (Phase 7, not yet built), where a judge can ask ad-hoc questions live. `explain` falls back
+to a template if every LLM provider fails (NOTES.md Phase 2/3), so the benchmark can always be produced.
+
+### `llm/client.py`
+Provider-chain (`.env LLM_CHAIN`), disk-cached by (model, messages, response_format) so re-running the 20-case
+benchmark is free and deterministic. `generate()` (text) / `generate_json()` (JSON mode + one repair retry).
+
+### `agent/policy_engine.py` -- the routing table + R1-R10, hand-coded from data/policy/fraud_policy.md exactly
+`route_for()` implements s.2's table exactly (BLOCK_CARD's L1/L2 split at $2,500). `evaluate()` runs the rules in
+priority order (R3/R2/R4/R7 branches on a verification response, else R1/R5/R6/R8/R9), returns a list of
+`Recommendation(action, route, reason)` citing the rule number. `build_flags()` derives every rule input from
+the evidence bundle so the initial and final NBA passes compute identically. Two DOCUMENTED, honest gaps given
+what this dataset provides: **R7 can never fire** (no merchant identity, only a ProductCD category -- "same
+merchant, same amount, monthly" isn't detectable), and `pending_auth` is proxied by trigger_type (risk_score =
+before settlement) since there's no explicit pending/settled flag.
+
+### `agent/uncertainty.py` -- fraud_probability + the stop rule
+`fraud_probability = w * propensity + (1-w) * pattern_confidence`, where `w` is per-pattern (Phase 2 calibration:
+propensity is well-calibrated for CNP/CNP-new-device/card_testing, but "blind" to in-person ATO/OOR and to
+undocumented structuring/ring -- so those patterns lean on the (separately calibrated) pattern-confidence
+instead). Stop rule matches policy s.6 exactly (>=0.85 or <=0.15 with >=2 independent evidence; a verification
+response settles it; round cap as a last resort).
+
+### A real design bug found and fixed via testing on closed cases (not just unit-level review)
+Ran `scripts/50_run_case.py` on CC-0001 (confirmed_fraud, card_not_present_fraud) and CC-0003 (cleared,
+$442.92 flagged at risk 0.91 -- exactly the worked "confirmed travel" example from README's Things To Know).
+CC-0003 exposed a real bug: `no_reply_24h` was detected by checking for the substring `"no reply"` in the
+simulated response text, but the actual text says `"No response... within 24 hours"` -- the check silently
+never matched, so **policy R4 never fired**, and `gather_more` kept re-asking the identical `customer_validation`
+question 3 times (hitting `MAX_ROUNDS`) with zero new information each round, since the deterministic simulator
+is a pure function of already-known evidence and asking again cannot produce new information. Fixed at the root:
+refactored `uncertainty.assess()` around a single `evidence_request_outcome` (`None | confirmed | denied |
+no_reply | inconclusive`) where **every** non-None outcome is now terminal -- R4 explicitly defines the action
+for "no reply" rather than asking again, and "inconclusive" hits policy s.6's third stop condition ("further
+steps are unlikely to change the decision"). Both closed cases now resolve in exactly 1 round instead of 3,
+matching the spirit of "investigations that continue past a defensible decision waste time" (policy s.6).
+Also fixed a wording bug: `what_changed` said "the customer denied the transaction" even when the response came
+via a failed step-up-auth challenge, not a direct customer denial -- now phrased per the actual evidence-request
+type. Neither bug would have been caught by reading the code; both only showed up by actually running cases.
+
+### `agent/tools/actions.py` -- mock action layer, deterministic simulated responses
+Two categories: evidence-gathering (customer_validation / step_up_auth / analyst_info -- responses are a pure,
+documented function of the agent's OWN current fraud-probability estimate, never a hidden label, satisfying
+both README's "state the assumption" and prompt.md's "determinism for the demo") and policy-action execution
+(only `auto`-route actions actually run; L1/L2 are recorded pending, gated by `policy_engine.is_executable()`).
+Verified directly: on CC-0001, `BLOCK_CARD` (route L1) came back `executed: False, "PENDING L1 approval -- not
+executed by the agent"`, `CREATE_CASE` (route auto) came back `executed: True` -- the "never execute an
+approval-required action without approval" check the spec calls for, confirmed by inspection, not just by design.
+
+### `agent/memory.py` -- writes the resolved case into the graph
+Creates an embedded `InvestigationCase` vertex + `HAS_EVIDENCE`/`CASE_ON_CARD`/`CASE_DEVICE`/`TOOK_ACTION`/
+`SIMILAR_TO` edges. Verified on CC-0001: the vertex and all edge types landed correctly, including three real
+`SIMILAR_TO` links to `ClosedCase` vertices found by GraphRAG semantic retrieval (CC-2992, CC-3908, CC-2578) --
+genuine case memory, queryable by the next investigation.
+
+### Phase 5 check (spec-required): run on a confirmed-fraud closed case and a cleared closed case
+- **CC-0001** (confirmed_fraud/card_not_present_fraud, true exposure $155.43, no report filed): agent reaches
+  verdict=fraud, pattern=card_not_present_fraud, exposure=$155.43, sar.file=false -- all three match the ground
+  truth exactly. BLOCK_CARD correctly withheld pending L1 approval.
+- **CC-0003** (cleared -- the README's own "cardholder confirmed travel" example): agent reaches verdict=fraud
+  at p=0.57 (single ambiguous risk-0.91 in-person txn, simulated no-reply). This DISAGREES with the true (hidden)
+  outcome, and that's expected and acceptable: the agent has no way to observe "customer confirmed travel" --
+  that fact isn't in the transaction data, only in the closed case's human-written outcome. What matters is that
+  the PROCESS is defensible: R4 fired correctly on a genuine no-reply, the loop terminated in one round instead
+  of wasting three, every action cites its rule, and BLOCK_CARD-class actions still wait for approval. The
+  20 real exam cases have no visible ground truth either way -- this dev validation is about process soundness,
+  not oracle accuracy.
+- Uncertainty loop fires when signals are weak (both cases were "weak" at round 0, both triggered gather_more,
+  both terminated in exactly one round after the fix above -- no infinite/wasteful looping).
