@@ -374,3 +374,28 @@ genuine case memory, queryable by the next investigation.
   not oracle accuracy.
 - Uncertainty loop fires when signals are weak (both cases were "weak" at round 0, both triggered gather_more,
   both terminated in exactly one round after the fix above -- no infinite/wasteful looping).
+
+## Phase 6: case memory eval - DONE 2026-09-22
+
+Spec check: "Confirm retrieval of similar past cases materially changes recommendations... small eval showing
+memory improves the assessment on a held-out closed case vs. memory disabled."
+
+`scripts/45_memory_eval.py`: held out 1,580 confirmed-fraud closed cases (account_takeover / out_of_region_use,
+the two patterns Phase 2 found are NOT separable from a single episode's behaviour alone -- exactly the
+condition memory is meant to help) that each have at least one prior confirmed-fraud case on the same card.
+Compared `detectors.patterns.classify()` alone (no memory) against `classify()` + `apply_memory_prior()` (same-
+card case history):
+
+| | accuracy | 
+|---|---|
+| without memory | 804/1580 = 0.509 |
+| with memory | 1190/1580 = 0.753 |
+
+Memory flipped 726 of 1,580 recommendations: fixed 556 wrong calls, broke 170 right ones (net +386, a clearly
+positive and material effect, not noise). This is the case-memory ablation for the ATO/OOR pattern ambiguity
+specifically. Separately, every live agent run (Phase 5) also shows GraphRAG semantic case retrieval
+(`graphrag/retrieve.py`'s `search_cases`) populating `similar_prior_cases` with real, on-topic prior cases (e.g.
+HHG-014 surfaced the actual ring cases from Phase 2; CC-0001 surfaced 3 genuinely similar card-not-present cases)
+and those ids get written as real `SIMILAR_TO` edges in the graph (agent/memory.py) -- so both forms of memory
+this system has (same-card structured history, and semantic vector retrieval) are demonstrated working, not just
+one. Results: `outputs/memory_eval.json`.

@@ -1,0 +1,126 @@
+{
+  "case_id": "HHG-003",
+  "case": {
+    "status": "closed_fraud",
+    "verdict": "fraud",
+    "fraud_probability": 0.82,
+    "pattern": "out_of_region_use",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3530056",
+      "3530164"
+    ],
+    "first_suspicious_txn_id": "3530056",
+    "connected_card_ids": [],
+    "connected_device_profiles": [],
+    "exposure_usd": 165.93,
+    "evidence": [
+      {
+        "claim": "Trigger is a customer complaint denying the transaction: \"Customer C08623 message: 'I never made this $49.00 purchase. Please check my card.' Refers to 3530164.\"",
+        "source": "customer",
+        "ref": "trigger",
+        "entity_ids": [
+          "3530164"
+        ]
+      },
+      {
+        "claim": "Flagged transaction 3530164: $49.00 W on in_person, risk_score 0.40, 2016-12-10 13:01:21",
+        "source": "graph",
+        "ref": "query:get_transaction",
+        "entity_ids": [
+          "3530164"
+        ]
+      },
+      {
+        "claim": "Episode reconstruction: 2 of 13 transactions on C08623-K2 within +-24h scored >= 0.5 fraud-propensity on the same channel",
+        "source": "graph",
+        "ref": "query:card_window(card=C08623-K2,+-24h)+offline_propensity",
+        "entity_ids": [
+          "3530164",
+          "3530056"
+        ]
+      },
+      {
+        "claim": "Case memory: 6 prior closed case(s) on this customer's cards, most recent out_of_region_use (confirmed_fraud) opened 2016-10-18 00:16:26",
+        "source": "graph",
+        "ref": "query:customer_profile(customer=C08623)",
+        "entity_ids": [
+          "CC-4957",
+          "CC-3682",
+          "CC-3327",
+          "CC-2935",
+          "CC-2817"
+        ]
+      },
+      {
+        "claim": "GraphRAG semantic retrieval surfaced 3 similar prior case(s) by case narrative (not just same-card history): CC-3857, CC-4413, CC-2448",
+        "source": "graph",
+        "ref": "query:vector_search_cases",
+        "entity_ids": [
+          "CC-3857",
+          "CC-4413",
+          "CC-2448"
+        ]
+      },
+      {
+        "claim": "Retrieved policy/typology guidance: Out-of-region use (pattern:out_of_region_use)",
+        "source": "document",
+        "ref": "pattern:out_of_region_use",
+        "entity_ids": []
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-2448",
+      "CC-2817",
+      "CC-2935",
+      "CC-3327",
+      "CC-3682",
+      "CC-3857",
+      "CC-4413",
+      "CC-4957"
+    ],
+    "summary": "Customer C08623 reported unauthorized activity regarding transaction 3530164 for $49.00. Investigation identified an episode of two transactions totaling $165.93, both flagged for out-of-region use. The customer has a history of six prior closed fraud cases, and semantic retrieval identified three similar prior cases. Based on the customer's denial and the identified pattern, the transaction is confirmed as fraud with a probability of 0.82.",
+    "written_to_graph": true,
+    "graph_case_id": "HHG-003"
+  },
+  "evidence_requests": [],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: customer denied the transaction"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2"
+      }
+    ],
+    "final": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: customer denied the transaction"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2"
+      }
+    ],
+    "what_changed": "nothing"
+  },
+  "sar": {
+    "file": false,
+    "reason": "Fraud not confirmed/strongly suspected, or none of policy s.3a's filing conditions (exposure > $1,000, shared origin, coordinated/undocumented) are met",
+    "narrative": "",
+    "subjects": [],
+    "total_amount_usd": 0,
+    "activity_dates": []
+  },
+  "stop_reason": "The investigation concluded that the transaction is confirmed fraud based on customer denial and historical patterns, necessitating a block per policy R2.",
+  "tool_calls": 9,
+  "tokens": 1555,
+  "latency_s": 9.2
+}

@@ -1,0 +1,115 @@
+{
+  "case_id": "HHG-002",
+  "case": {
+    "status": "closed_fraud",
+    "verdict": "fraud",
+    "fraud_probability": 0.82,
+    "pattern": "card_not_present_fraud",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3478782"
+    ],
+    "first_suspicious_txn_id": "3478782",
+    "connected_card_ids": [],
+    "connected_device_profiles": [],
+    "exposure_usd": 292.36,
+    "evidence": [
+      {
+        "claim": "Flagged transaction 3478782: $292.36 C on online, risk_score 0.79, 2016-11-22 17:27:07",
+        "source": "graph",
+        "ref": "query:get_transaction",
+        "entity_ids": [
+          "3478782"
+        ]
+      },
+      {
+        "claim": "Episode reconstruction: 1 of 1 transactions on C11891-K1 within +-24h scored >= 0.5 fraud-propensity on the same channel",
+        "source": "graph",
+        "ref": "query:card_window(card=C11891-K1,+-24h)+offline_propensity",
+        "entity_ids": [
+          "3478782"
+        ]
+      },
+      {
+        "claim": "Case memory: 1 prior closed case(s) on this customer's cards, most recent card_not_present_fraud (confirmed_fraud) opened 2016-09-30 08:59:51",
+        "source": "graph",
+        "ref": "query:customer_profile(customer=C11891)",
+        "entity_ids": [
+          "CC-4160"
+        ]
+      },
+      {
+        "claim": "GraphRAG semantic retrieval surfaced 3 similar prior case(s) by case narrative (not just same-card history): CC-2992, CC-3415, CC-3908",
+        "source": "graph",
+        "ref": "query:vector_search_cases",
+        "entity_ids": [
+          "CC-2992",
+          "CC-3415",
+          "CC-3908"
+        ]
+      },
+      {
+        "claim": "Retrieved policy/typology guidance: Card-not-present fraud (pattern:card_not_present_fraud)",
+        "source": "document",
+        "ref": "pattern:card_not_present_fraud",
+        "entity_ids": []
+      },
+      {
+        "claim": "Evidence request (step_up_auth): Customer did not complete step-up authentication; the session was abandoned.",
+        "source": "customer",
+        "ref": "evidence_request:1",
+        "entity_ids": []
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-2992",
+      "CC-3415",
+      "CC-3908",
+      "CC-4160"
+    ],
+    "summary": "Case HHG-002 was initiated following a risk score of 0.79 on transaction 3478782 for $292.36. The transaction was identified as card-not-present fraud, supported by the customer's failure to complete step-up authentication and a history of prior confirmed fraud on card C11891-K1. Given the abandoned session and the alignment with known fraud patterns, the transaction is classified as confirmed fraud with an exposure of $292.36. Similar prior cases (CC-2992, CC-3415, CC-3908) further corroborate the risk profile associated with this account.",
+    "written_to_graph": true,
+    "graph_case_id": "HHG-002"
+  },
+  "evidence_requests": [
+    {
+      "type": "step_up_auth",
+      "asked_after_step": 1,
+      "assumed_response": "Customer did not complete step-up authentication; the session was abandoned."
+    }
+  ],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "MONITOR_CARD",
+        "route": "auto",
+        "reason": "fraud probability 0.32; no specific rule fired, default to monitoring"
+      }
+    ],
+    "final": [
+      {
+        "action": "BLOCK_CARD",
+        "route": "L1",
+        "reason": "R2: customer denied the transaction"
+      },
+      {
+        "action": "CREATE_CASE",
+        "route": "auto",
+        "reason": "R2"
+      }
+    ],
+    "what_changed": "the customer failed to complete step-up authentication, raising probability to 0.82; added BLOCK_CARD, CREATE_CASE; dropped MONITOR_CARD."
+  },
+  "sar": {
+    "file": false,
+    "reason": "Fraud not confirmed/strongly suspected, or none of policy s.3a's filing conditions (exposure > $1,000, shared origin, coordinated/undocumented) are met",
+    "narrative": "",
+    "subjects": [],
+    "total_amount_usd": 0,
+    "activity_dates": []
+  },
+  "stop_reason": "The investigation concluded after the customer abandoned the required step-up authentication process, confirming the fraudulent nature of the transaction.",
+  "tool_calls": 13,
+  "tokens": 1515,
+  "latency_s": 15.0
+}

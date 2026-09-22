@@ -1,0 +1,121 @@
+{
+  "case_id": "HHG-001",
+  "case": {
+    "status": "escalated",
+    "verdict": "uncertain",
+    "fraud_probability": 0.44,
+    "pattern": "out_of_region_use",
+    "pattern_description": "",
+    "affected_txn_ids": [
+      "3514030"
+    ],
+    "first_suspicious_txn_id": "3514030",
+    "connected_card_ids": [],
+    "connected_device_profiles": [],
+    "exposure_usd": 77.07,
+    "evidence": [
+      {
+        "claim": "Flagged transaction 3514030: $77.07 W on in_person, risk_score 0.61, 2016-12-04 19:55:28",
+        "source": "graph",
+        "ref": "query:get_transaction",
+        "entity_ids": [
+          "3514030"
+        ]
+      },
+      {
+        "claim": "Episode reconstruction: 1 of 6 transactions on C12382-K1 within +-24h scored >= 0.5 fraud-propensity on the same channel",
+        "source": "graph",
+        "ref": "query:card_window(card=C12382-K1,+-24h)+offline_propensity",
+        "entity_ids": [
+          "3514030"
+        ]
+      },
+      {
+        "claim": "Case memory: 4 prior closed case(s) on this customer's cards, most recent out_of_region_use (confirmed_fraud) opened 2016-09-17 04:08:08",
+        "source": "graph",
+        "ref": "query:customer_profile(customer=C12382)",
+        "entity_ids": [
+          "CC-3587",
+          "CC-2964",
+          "CC-1673",
+          "CC-1066"
+        ]
+      },
+      {
+        "claim": "GraphRAG semantic retrieval surfaced 3 similar prior case(s) by case narrative (not just same-card history): CC-3857, CC-0689, CC-4413",
+        "source": "graph",
+        "ref": "query:vector_search_cases",
+        "entity_ids": [
+          "CC-3857",
+          "CC-0689",
+          "CC-4413"
+        ]
+      },
+      {
+        "claim": "Retrieved policy/typology guidance: Out-of-region use (pattern:out_of_region_use)",
+        "source": "document",
+        "ref": "pattern:out_of_region_use",
+        "entity_ids": []
+      },
+      {
+        "claim": "Evidence request (customer_validation): No response from the customer within 24 hours of the validation request (assumed per policy s.5: replies are not provided in this exercise; simulated as non-response for a mid-range case).",
+        "source": "customer",
+        "ref": "evidence_request:1",
+        "entity_ids": []
+      }
+    ],
+    "similar_prior_cases": [
+      "CC-0689",
+      "CC-1066",
+      "CC-1673",
+      "CC-2964",
+      "CC-3587",
+      "CC-3857",
+      "CC-4413"
+    ],
+    "summary": "Transaction 3514030 for $77.07 was flagged with a risk score of 0.61 due to an out-of-region use pattern. The customer has a history of four prior closed cases, including a confirmed fraud incident involving out-of-region use on 2016-09-17. Despite a validation request, the customer provided no response within the 24-hour window. Given the historical pattern and lack of customer confirmation, the transaction remains suspicious.",
+    "written_to_graph": true,
+    "graph_case_id": "HHG-001"
+  },
+  "evidence_requests": [
+    {
+      "type": "customer_validation",
+      "asked_after_step": 1,
+      "assumed_response": "No response from the customer within 24 hours of the validation request (assumed per policy s.5: replies are not provided in this exercise; simulated as non-response for a mid-range case)."
+    }
+  ],
+  "next_best_actions": {
+    "initial": [
+      {
+        "action": "ESCALATE_TO_ANALYST",
+        "route": "auto",
+        "reason": "R8: verdict uncertain and exposure exceeds $500, or evidence conflicts"
+      }
+    ],
+    "final": [
+      {
+        "action": "MONITOR_CARD",
+        "route": "auto",
+        "reason": "R4: no reply within 24 hours"
+      },
+      {
+        "action": "DECLINE_TRANSACTION",
+        "route": "L1",
+        "reason": "R4: pending authorization, no reply within 24 hours"
+      }
+    ],
+    "what_changed": "the requested evidence came back inconclusive/no-reply (probability 0.44); added MONITOR_CARD, DECLINE_TRANSACTION; dropped ESCALATE_TO_ANALYST."
+  },
+  "sar": {
+    "file": false,
+    "reason": "Fraud not confirmed/strongly suspected, or none of policy s.3a's filing conditions (exposure > $1,000, shared origin, coordinated/undocumented) are met",
+    "narrative": "",
+    "subjects": [],
+    "total_amount_usd": 0,
+    "activity_dates": []
+  },
+  "stop_reason": "The investigation concluded due to the lack of customer response to the validation request and the presence of historical fraud patterns on the account.",
+  "tool_calls": 9,
+  "tokens": 1545,
+  "latency_s": 21.5
+}

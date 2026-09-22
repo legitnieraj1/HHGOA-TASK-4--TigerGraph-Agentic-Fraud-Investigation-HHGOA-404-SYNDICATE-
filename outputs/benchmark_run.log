@@ -1,0 +1,6 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 20636.92it/s]
+HHG-001  OK             verdict=uncertain   pattern=out_of_region_use            p=0.44  sar=False  (22s)
+HHG-002  OK             verdict=fraud       pattern=card_not_present_fraud       p=0.82  sar=False  (15s)
+HHG-003  OK             verdict=fraud       pattern=out_of_region_use            p=0.82  sar=False  (9s)
+HHG-004  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.82  sar=False  (16s)

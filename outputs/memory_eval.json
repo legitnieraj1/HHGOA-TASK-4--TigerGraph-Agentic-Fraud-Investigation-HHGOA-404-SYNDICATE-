@@ -1,0 +1,90 @@
+{
+  "n_eligible": 1580,
+  "accuracy_without_memory": 0.5089,
+  "accuracy_with_memory": 0.7532,
+  "n_flipped": 726,
+  "n_memory_fixed": 556,
+  "n_memory_broke": 170,
+  "sample_flips": [
+    {
+      "case_id": "CC-4694",
+      "true_pattern": "out_of_region_use",
+      "no_memory": "account_takeover",
+      "with_memory": "out_of_region_use",
+      "correct_before": false,
+      "correct_after": true
+    },
+    {
+      "case_id": "CC-4696",
+      "true_pattern": "out_of_region_use",
+      "no_memory": "account_takeover",
+      "with_memory": "out_of_region_use",
+      "correct_before": false,
+      "correct_after": true
+    },
+    {
+      "case_id": "CC-4688",
+      "true_pattern": "account_takeover",
+      "no_memory": "out_of_region_use",
+      "with_memory": "account_takeover",
+      "correct_before": false,
+      "correct_after": true
+    },
+    {
+      "case_id": "CC-4758",
+      "true_pattern": "out_of_region_use",
+      "no_memory": "account_takeover",
+      "with_memory": "out_of_region_use",
+      "correct_before": false,
+      "correct_after": true
+    },
+    {
+      "case_id": "CC-4781",
+      "true_pattern": "out_of_region_use",
+      "no_memory": "account_takeover",
+      "with_memory": "out_of_region_use",
+      "correct_before": false,
+      "correct_after": true
+    },
+    {
+      "case_id": "CC-4723",
+      "true_pattern": "out_of_region_use",
+      "no_memory": "account_takeover",
+      "with_memory": "out_of_region_use",
+      "correct_before": false,
+      "correct_after": true
+    },
+    {
+      "case_id": "CC-4683",
+      "true_pattern": "account_takeover",
+      "no_memory": "out_of_region_use",
+      "with_memory": "account_takeover",
+      "correct_before": false,
+      "correct_after": true
+    },
+    {
+      "case_id": "CC-4711",
+      "true_pattern": "account_takeover",
+      "no_memory": "out_of_region_use",
+      "with_memory": "account_takeover",
+      "correct_before": false,
+      "correct_after": true
+    },
+    {
+      "case_id": "CC-4680",
+      "true_pattern": "account_takeover",
+      "no_memory": "out_of_region_use",
+      "with_memory": "account_takeover",
+      "correct_before": false,
+      "correct_after": true
+    },
+    {
+      "case_id": "CC-4698",
+      "true_pattern": "account_takeover",
+      "no_memory": "out_of_region_use",
+      "with_memory": "account_takeover",
+      "correct_before": false,
+      "correct_after": true
+    }
+  ]
+}
