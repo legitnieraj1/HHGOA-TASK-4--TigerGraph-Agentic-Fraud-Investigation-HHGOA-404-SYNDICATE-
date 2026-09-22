@@ -230,3 +230,66 @@ count without per-name verification.
 `tests/test_mcp_agent_smoke.py`: a real LLM (Gemini 3.6 Flash, native SDK) tool-calls the MCP server for the
 same two queries and reports back correctly: "Card C03528-K1... `SM-G935F...`: 21 other cards... Previous
 Transaction IDs: 3513814, 3512936; Next: 3514461, 3515241" -- exact match to the manually-verified numbers.
+
+## Phase 4: GraphRAG (policy + case memory) - DONE 2026-09-22
+
+### Chunking (`graphrag/chunk.py`)
+29 chunks from `data/policy/*.md` (all extracted verbatim from the README in Phase 0, plus one new file):
+10 policy rules (`policy:R1`..`policy:R10`, split out of the "### 3. Rules" section individually -- R10's bold
+markup lacks R1-R9's trailing period before `**`, a real parsing gotcha, fixed), 8 other policy sections
+(`policy:0,1,2,3a,3b,4,5,6,7`), 5 known patterns (`pattern:card_testing` etc.), 3 regulatory chunks, 2 misc
+(glossary, things-to-know). Chunk ids are stable and human-legible so a citation can read `ref: "policy:R5"`
+directly (policy s.7: "cite the rule number").
+
+### Regulatory grounding (`data/policy/regulatory_guidance.md`, new)
+The README only lists regulator document titles/links, not text. Fetched and read two of the most operationally
+relevant ones directly (2026-09-22) rather than fabricate their content: **FinCEN's SAR Narrative Guidance**
+(the five W's + How, and the introduction/body/conclusion structure -- this is the actual source for
+`sar.narrative`'s required shape) via PDF page images (WebFetch couldn't parse the PDF's compressed streams;
+Read tool + `pdftoppm`, installed via `brew install poppler`, rendered pages as images instead), and **FinCEN's
+Account Takeover Advisory (FIN-2011-A016)** (red flags, SAR box-checking conventions) via WebFetch (HTML page,
+fetched fine). The other ~11 regulatory references are indexed as title/agency pointers only, explicitly marked
+as not fetched for content -- so nothing here is fabricated as verbatim regulatory text.
+
+### Embeddings (`graphrag/embed.py`)
+Local `sentence-transformers/all-MiniLM-L6-v2`, 384-dim (matches `EMB_DIM` in `tigergraph/spec.py`), normalized.
+No API cost, no network dependency at query time. `EMBEDDING_PROVIDER=local` in `.env` confirmed as the choice.
+
+### Vector search queries + a real bug caught before it degraded retrieval silently
+`tigergraph/queries/vector_search_policy.gsql` / `vector_search_cases.gsql`: `vectorSearch({Type.emb}, vec, k,
+{distance_map: @@d})`, `SYNTAX v3`. Two gotchas:
+- A `LIST<FLOAT>` query parameter (384 floats) doesn't work as a GET query string (repeated-key or single-value
+  forms both failed with type errors); switched `TG.run_query()` to POST with a JSON body whenever any param is
+  a list/tuple, scalar-only calls still use GET. Fixed in `tigergraph/client.py`.
+- **`vectorSearch`'s PRINTed vertex order is NOT sorted by distance** -- verified empirically: for a card-testing
+  query the raw PRINT order was `[pattern:card_testing, policy:R5, policy:R10, policy:R4, ...]` while the actual
+  distances (looked up from `@@distances`) were `[0.531, 0.289, 0.538, 0.411, ...]` -- policy:R5, the closest
+  match, was NOT first in the unsorted list. `graphrag/retrieve.py` always sorts by the returned `distance_map`
+  before use; anything reading `vectorSearch` output directly (including from the MCP `search_top_k_similarity`
+  tool in Phase 5) must do the same or silently misrank results. COSINE distance confirmed lower-is-closer (the
+  `card_not_present_new_device` chunk, whose own text says "device... New... behind a proxy", correctly has the
+  lowest distance for a device+proxy query).
+
+### Phase 4 check (spec-required: "retrieval returns the right policy clause for a shared-device ring and for
+a card-testing burst")
+- Card-testing query -> `policy:R5` ranks #1 of 6 (distance 0.289, next closest 0.411). Clean pass.
+- Device-ring query -> `policy:R6` ("Shared origin") ranks #2 of 6 (distance 0.457, #1 is
+  `pattern:card_not_present_new_device` at 0.361, topically adjacent -- also about New+proxy devices). Inside
+  the default context window (`synthesize_context`'s `max_policy=4`), so the LLM sees it either way. Honest
+  pass, not a clean #1.
+- Case memory: a device-ring-shaped query's #1 hit is `CC-2985`, one of the actual known ring cases found by
+  rule-based detection in Phase 2 (`SM-G935F...` device, `undocumented` pattern) -- semantic and rule-based
+  detection agree on the same case from two independent methods.
+
+### Seeding (`scripts/40_seed_memory.py`, idempotent -- upsert overwrites)
+29 `PolicyDoc` vectors + 5,565 `ClosedCase` vectors (embedded in 17s, upserted in 300-row batches via
+`TG.upsert()` REST, not MCP -- MCP is for agent-runtime retrieval per the spec's tool-exposure requirement;
+bulk seeding scripts use the direct client for speed/reliability, already proven in Phase 1/2). Vector index
+rebuild (`GET /restpp/vector/status`) went from `Rebuild_processing` to `Ready_for_query` within the seeding
+run; search already returned correct results even mid-rebuild.
+
+### `graphrag/retrieve.py` -- what Phase 5's gather_evidence node will call
+`retrieve(tg, pattern_result, flagged_txn_summary)`: builds a query from the case's suspected pattern + evidence
+reasons (not just the pattern label -- semantic search does better on a descriptive sentence), searches both
+PolicyDoc and ClosedCase vectors, returns a synthesized, already-cited context block
+(`synthesize_context`) -- never raw rows or full documents, matching the spec's GraphRAG requirement.

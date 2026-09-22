@@ -1,0 +1,7 @@
+// Top-k nearest ClosedCase summaries to a query embedding (case memory -- similar prior investigations).
+CREATE OR REPLACE QUERY vector_search_cases(LIST<FLOAT> query_vector, INT k) FOR GRAPH FraudGraph SYNTAX v3 {
+  MapAccum<VERTEX, FLOAT> @@distances;
+  v = vectorSearch({ClosedCase.emb}, query_vector, k, {distance_map: @@distances});
+  PRINT v[v.case_id, v.customer_id, v.card_id, v.outcome, v.pattern, v.exposure_usd, v.analyst_notes];
+  PRINT @@distances AS distances;
+}

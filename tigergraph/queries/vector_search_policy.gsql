@@ -1,0 +1,7 @@
+// Top-k nearest PolicyDoc chunks to a query embedding (policy rules, typologies, regulatory guidance).
+CREATE OR REPLACE QUERY vector_search_policy(LIST<FLOAT> query_vector, INT k) FOR GRAPH FraudGraph SYNTAX v3 {
+  MapAccum<VERTEX, FLOAT> @@distances;
+  v = vectorSearch({PolicyDoc.emb}, query_vector, k, {distance_map: @@distances});
+  PRINT v[v.chunk_id, v.source, v.section, v.title, v.text];
+  PRINT @@distances AS distances;
+}

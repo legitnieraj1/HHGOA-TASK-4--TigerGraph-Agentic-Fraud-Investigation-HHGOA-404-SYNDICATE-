@@ -120,7 +120,12 @@ class TG:
                          headers={"Content-Type": "text/plain"}, timeout=600)
 
     def run_query(self, name, **params):
-        """Call an installed query. Params are percent-encoded (%20, not '+'): vertex ids like device keys contain spaces, '/' and '|'."""
+        """Call an installed query. A LIST-valued param (e.g. a 384-float embedding for vectorSearch) is sent as a
+        JSON POST body -- a GET query string of that size is unwieldy and TigerGraph's list-as-repeated-key GET
+        form is easy to get wrong. Scalar-only calls still use GET with percent-encoded values (%20, not '+':
+        vertex ids like device keys contain spaces, '/' and '|')."""
+        if any(isinstance(v, (list, tuple)) for v in params.values()):
+            return self.rest("POST", f"/restpp/query/{self.graph}/{name}", json=params, timeout=300)
         from urllib.parse import quote
         qs = "&".join(f"{k}={quote(str(v), safe='')}" for k, v in params.items())
         return self.rest("GET", f"/restpp/query/{self.graph}/{name}" + (f"?{qs}" if qs else ""), timeout=300)
