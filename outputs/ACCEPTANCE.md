@@ -88,8 +88,11 @@ panel (`POST /api/investigate`) that triggers a live investigation against the r
 - **Investigation accuracy (25%)**: strong on the two dimensions independently verifiable without the hidden
   answer key -- pattern detectors validated against 5,565 closed cases (structuring 5/5, card-testing 0 false
   fires, device rings 4/4 with 0 FP across 25 negatives), and a closed-case replay (CC-0001) matches the true
-  verdict/pattern/exposure/SAR-filing exactly. Weakest point: account-takeover vs out-of-region-use is
-  genuinely not separable from single-episode behaviour (confirmed with a depth-3 decision tree, 67% best
+  verdict/pattern/exposure/SAR-filing exactly. The final 20-case run resolves 8 legitimate / 12 fraud with 0
+  cases landing on `uncertain` -- a real, calibrated split (not an artifact: an earlier run before a calibration
+  fix, documented in NOTES.md, produced 0 legitimate verdicts out of 20 against the README's explicit "half the
+  cases are legitimate", which is what surfaced the bug). Weakest point: account-takeover vs out-of-region-use
+  is genuinely not separable from single-episode behaviour (confirmed with a depth-3 decision tree, 67% best
   case) -- mitigated by case memory (50.9%→75.3%) but not solved, and the agent is honest about this rather
   than guessing confidently.
 - **Next best action (25%)**: exact policy-rule implementation (R1-R10), before/after snapshots, approval
