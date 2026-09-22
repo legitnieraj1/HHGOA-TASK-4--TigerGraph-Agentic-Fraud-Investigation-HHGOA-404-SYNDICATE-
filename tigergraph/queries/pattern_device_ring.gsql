@@ -1,0 +1,31 @@
+// Shared-device ring: which distinct cards used this device profile in the window, how new/proxied, and which are already
+// linked to confirmed-fraud closed cases. Degree centrality of the device on the Card-Device bipartite graph.
+CREATE OR REPLACE QUERY pattern_device_ring(VERTEX<DeviceProfile> device, DATETIME asof, INT days) FOR GRAPH FraudGraph {
+  MapAccum<STRING, SumAccum<INT>> @@card_txns;
+  MapAccum<STRING, MinAccum<DATETIME>> @@card_first;
+  MapAccum<STRING, SumAccum<DOUBLE>> @@card_amount;
+  MapAccum<STRING, SumAccum<INT>> @@proxy_counts;
+  MapAccum<STRING, SumAccum<INT>> @@status_counts;
+  MinAccum<DATETIME> @@first_ts;
+  MaxAccum<DATETIME> @@last_ts;
+  SumAccum<INT> @@n_txns;
+  ListAccum<STRING> @@closed_cases;         // case_id|card_id|outcome|pattern for closed cases touching these txns
+  SetAccum<STRING> @@fraud_cards;
+  DATETIME t0 = datetime_sub(asof, INTERVAL days DAY);
+
+  Start = {device};
+  T = SELECT t FROM Start:d -(rev_FROM_DEVICE>)- Transaction:t
+      WHERE t.ts <= asof AND t.ts >= t0
+      ACCUM @@card_txns += (t.card_id -> 1), @@card_first += (t.card_id -> t.ts), @@card_amount += (t.card_id -> t.amount),
+            @@proxy_counts += (t.ip_proxy -> 1), @@status_counts += (t.dev_status -> 1),
+            @@first_ts += t.ts, @@last_ts += t.ts, @@n_txns += 1;
+  C = SELECT cc FROM T:t -(rev_INVOLVES>)- ClosedCase:cc
+      WHERE cc.opened_at <= asof
+      ACCUM @@closed_cases += cc.case_id + "|" + cc.card_id + "|" + cc.outcome + "|" + cc.pattern,
+            IF cc.outcome == "confirmed_fraud" THEN @@fraud_cards += cc.card_id END;
+
+  PRINT @@n_txns AS n_txns, @@card_txns.size() AS n_cards, @@first_ts AS first_ts, @@last_ts AS last_ts;
+  PRINT @@card_txns AS card_txns, @@card_first AS card_first_seen, @@card_amount AS card_amount;
+  PRINT @@proxy_counts AS proxy_counts, @@status_counts AS dev_status_counts;
+  PRINT @@fraud_cards AS fraud_linked_cards, @@closed_cases AS closed_cases;
+}

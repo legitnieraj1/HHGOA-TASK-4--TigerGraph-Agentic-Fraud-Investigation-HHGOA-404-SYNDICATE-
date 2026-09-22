@@ -1,0 +1,12 @@
+// Transactions on a card inside [t_from, t_to], with the device profile joined on. History-safe: caller picks the window.
+CREATE OR REPLACE QUERY card_window(VERTEX<Card> card, DATETIME t_from, DATETIME t_to) FOR GRAPH FraudGraph {
+  SumAccum<STRING> @dev;
+  Start = {card};
+  T = SELECT t FROM Start:s -(MADE>)- Transaction:t
+      WHERE t.ts >= t_from AND t.ts <= t_to;
+  D = SELECT t FROM T:t -(FROM_DEVICE>)- DeviceProfile:d
+      ACCUM t.@dev = d.device_key;
+  PRINT T[T.txn_id AS txn, T.ts AS ts, T.amount AS amount, T.channel AS channel, T.product_cd AS product,
+          T.risk_score AS risk_score, T.addr1 AS addr1, T.dev_status AS dev_status, T.ip_proxy AS ip_proxy,
+          T.p_email AS p_email, T.r_email AS r_email, T.@dev AS device_key];
+}

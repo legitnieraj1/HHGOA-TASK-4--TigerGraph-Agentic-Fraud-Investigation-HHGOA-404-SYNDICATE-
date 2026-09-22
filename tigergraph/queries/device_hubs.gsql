@@ -1,0 +1,20 @@
+// Degree centrality on the Card-Device bipartite graph: devices used by >= min_cards distinct cards in the window (ring hubs).
+// Generic devices (Windows/Chrome) hub with hundreds of cards, so callers filter to devices that are NEW for the account (only_new)
+// and/or behind a proxy (only_proxied). Returns hub -> card sets so components can be merged (weakly connected components).
+CREATE OR REPLACE QUERY device_hubs(DATETIME asof, INT days, INT min_cards, BOOL only_new, BOOL only_proxied) FOR GRAPH FraudGraph {
+  TYPEDEF TUPLE<INT n_cards, STRING device, INT n_txns> HT;
+  SetAccum<STRING> @cards;
+  SumAccum<INT> @n;
+  HeapAccum<HT>(60, n_cards DESC) @@hubs;
+  MapAccum<STRING, SetAccum<STRING>> @@hub_cards;
+  DATETIME t0 = datetime_sub(asof, INTERVAL days DAY);
+  T = SELECT t FROM Transaction:t
+      WHERE t.has_identity == TRUE AND t.ts <= asof AND t.ts >= t0
+        AND (only_new == FALSE OR t.dev_status == "New") AND (only_proxied == FALSE OR t.ip_proxy != "");
+  D = SELECT d FROM T:t -(FROM_DEVICE>)- DeviceProfile:d
+      ACCUM d.@cards += t.card_id, d.@n += 1
+      POST-ACCUM IF d.@cards.size() >= min_cards THEN @@hubs += HT(d.@cards.size(), d.device_key, d.@n) END;
+  H = SELECT t FROM T:t -(FROM_DEVICE>)- DeviceProfile:d WHERE d.@cards.size() >= min_cards
+      ACCUM @@hub_cards += (d.device_key -> t.card_id);
+  PRINT @@hubs AS hubs, @@hub_cards AS hub_cards;
+}

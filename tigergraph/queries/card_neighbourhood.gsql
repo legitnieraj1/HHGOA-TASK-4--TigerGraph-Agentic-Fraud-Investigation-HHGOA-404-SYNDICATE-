@@ -1,0 +1,18 @@
+// 2-hop neighbourhood: devices this card used in the window -> OTHER cards that used the same devices -> their confirmed-fraud links.
+// Fraud links are reported PER DEVICE: a popular device (hundreds of cards) links to fraud by chance, a rare one is meaningful.
+CREATE OR REPLACE QUERY card_neighbourhood(VERTEX<Card> card, DATETIME asof, INT days) FOR GRAPH FraudGraph {
+  SumAccum<STRING> @dev;
+  MapAccum<STRING, MapAccum<STRING, SumAccum<INT>>> @@dev_cards;
+  MapAccum<STRING, SumAccum<INT>> @@own_devices;
+  MapAccum<STRING, SetAccum<STRING>> @@dev_fraud_cards;
+  DATETIME t0 = datetime_sub(asof, INTERVAL days DAY);
+  Start = {card};
+  T = SELECT t FROM Start:s -(MADE>)- Transaction:t WHERE t.ts <= asof AND t.ts >= t0;
+  D = SELECT d FROM T:t -(FROM_DEVICE>)- DeviceProfile:d ACCUM @@own_devices += (d.device_key -> 1);
+  T2 = SELECT t2 FROM D:d -(rev_FROM_DEVICE>)- Transaction:t2
+       WHERE t2.ts <= asof AND t2.ts >= t0 AND t2.card_id != card.card_id
+       ACCUM t2.@dev = d.device_key, @@dev_cards += (d.device_key -> (t2.card_id -> 1));
+  CC = SELECT cc FROM T2:t2 -(rev_INVOLVES>)- ClosedCase:cc WHERE cc.opened_at <= asof AND cc.outcome == "confirmed_fraud"
+       ACCUM @@dev_fraud_cards += (t2.@dev -> cc.card_id);
+  PRINT @@own_devices AS own_devices, @@dev_cards AS other_cards_by_device, @@dev_fraud_cards AS fraud_cards_by_device;
+}

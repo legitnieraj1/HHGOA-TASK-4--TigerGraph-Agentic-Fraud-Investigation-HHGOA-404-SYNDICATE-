@@ -1,0 +1,42 @@
+// Card testing: tiny online authorisations (< tiny_amt) followed by a larger online purchase (>= large_amt).
+// strict = >=3 tiny inside any 60-minute span AND a larger purchase after the first of them (README typology).
+// loose  = >=3 tiny anywhere in the window before a larger purchase (weak: common on clean cards, see NOTES.md).
+CREATE OR REPLACE QUERY pattern_card_testing(VERTEX<Card> card, DATETIME t_ref, INT hours, DOUBLE tiny_amt, DOUBLE large_amt) FOR GRAPH FraudGraph {
+  TYPEDEF TUPLE<INT e, INT txn> ET;
+  HeapAccum<ET>(400, e ASC) @@tiny_h;
+  HeapAccum<ET>(400, e ASC) @@large_h;
+  ListAccum<ET> @@tiny;
+  ListAccum<ET> @@large;
+  ListAccum<INT> @@run_txns;
+  ListAccum<INT> @@large_after;
+  ListAccum<INT> @@all_tiny;
+  INT n = 0; INT lo = 0; INT best = 0; INT best_lo = 0; INT first_e = 0; INT nl = 0;
+  BOOL strict = FALSE; BOOL loose = FALSE;
+  DATETIME a = datetime_sub(t_ref, INTERVAL hours HOUR);
+  DATETIME b = datetime_add(t_ref, INTERVAL hours HOUR);
+  Start = {card};
+  T = SELECT t FROM Start:s -(MADE>)- Transaction:t WHERE t.channel == "online" AND t.ts >= a AND t.ts <= b
+      ACCUM IF t.amount < tiny_amt THEN @@tiny_h += ET(datetime_to_epoch(t.ts), t.txn_id) END,
+            IF t.amount >= large_amt THEN @@large_h += ET(datetime_to_epoch(t.ts), t.txn_id) END;
+  WHILE @@tiny_h.size() > 0 DO @@tiny += @@tiny_h.top(); @@tiny_h.pop(); END;
+  WHILE @@large_h.size() > 0 DO @@large += @@large_h.top(); @@large_h.pop(); END;
+  n = @@tiny.size(); nl = @@large.size();
+  IF n > 0 THEN
+    FOREACH hi IN RANGE[0, n - 1] DO
+      WHILE @@tiny.get(hi).e - @@tiny.get(lo).e > 3600 DO lo = lo + 1; END;
+      IF hi - lo + 1 > best THEN best = hi - lo + 1; best_lo = lo; END;
+    END;
+    first_e = @@tiny.get(best_lo).e;
+    FOREACH i IN RANGE[best_lo, best_lo + best - 1] DO @@run_txns += @@tiny.get(i).txn; END;
+    FOREACH k IN RANGE[0, n - 1] DO @@all_tiny += @@tiny.get(k).txn; END;
+  END;
+  IF nl > 0 AND n > 0 THEN
+    FOREACH j IN RANGE[0, nl - 1] DO
+      IF @@large.get(j).e >= first_e THEN @@large_after += @@large.get(j).txn; END;
+    END;
+  END;
+  strict = best >= 3 AND @@large_after.size() > 0;
+  loose = n >= 3 AND nl > 0;
+  PRINT n AS n_tiny_in_window, best AS max_tiny_in_60min, strict AS strict_match, loose AS loose_match;
+  PRINT @@run_txns AS tiny_run_txns, @@large_after AS larger_purchases_after, @@all_tiny AS all_tiny_txns;
+}

@@ -1,0 +1,30 @@
+// Behavioural baseline of a card over a lookback ending strictly before asof (no future leakage).
+CREATE OR REPLACE QUERY card_behaviour(VERTEX<Card> card, DATETIME asof, INT lookback_days) FOR GRAPH FraudGraph {
+  SumAccum<INT> @@n; SumAccum<INT> @@n_online; SumAccum<INT> @@n_inperson;
+  SumAccum<DOUBLE> @@sum_amt; SumAccum<DOUBLE> @@sum_sq; MaxAccum<DOUBLE> @@max_amt; MinAccum<DOUBLE> @@min_amt;
+  MapAccum<INT, SumAccum<INT>> @@inperson_regions;
+  MapAccum<STRING, SumAccum<INT>> @@products;
+  MapAccum<INT, SumAccum<INT>> @@hours;
+  MapAccum<STRING, SumAccum<INT>> @@devices;
+  MapAccum<STRING, SumAccum<INT>> @@dev_status;
+  MinAccum<DATETIME> @@first_ts; MaxAccum<DATETIME> @@last_ts;
+  SumAccum<INT> @@n_tiny_online;      // online, amount < 5
+  SumAccum<INT> @@n_last_24h; SumAccum<INT> @@n_last_7d;
+  DATETIME t0 = datetime_sub(asof, INTERVAL lookback_days DAY);
+  DATETIME d1 = datetime_sub(asof, INTERVAL 1 DAY);
+  DATETIME d7 = datetime_sub(asof, INTERVAL 7 DAY);
+  Start = {card};
+  T = SELECT t FROM Start:s -(MADE>)- Transaction:t WHERE t.ts < asof AND t.ts >= t0
+      ACCUM @@n += 1, @@sum_amt += t.amount, @@sum_sq += t.amount * t.amount, @@max_amt += t.amount, @@min_amt += t.amount,
+            @@products += (t.product_cd -> 1), @@hours += ((datetime_to_epoch(t.ts) / 3600) % 24 -> 1),
+            @@first_ts += t.ts, @@last_ts += t.ts, @@dev_status += (t.dev_status -> 1),
+            IF t.channel == "online" THEN @@n_online += 1 ELSE @@n_inperson += 1, IF t.addr1 >= 0 THEN @@inperson_regions += (t.addr1 -> 1) END END,
+            IF t.channel == "online" AND t.amount < 5 THEN @@n_tiny_online += 1 END,
+            IF t.ts >= d1 THEN @@n_last_24h += 1 END, IF t.ts >= d7 THEN @@n_last_7d += 1 END;
+  D = SELECT d FROM T:t -(FROM_DEVICE>)- DeviceProfile:d ACCUM @@devices += (d.device_key -> 1);
+  PRINT @@n AS n_txns, @@n_online AS n_online, @@n_inperson AS n_inperson, @@first_ts AS first_ts, @@last_ts AS last_ts;
+  PRINT @@sum_amt AS sum_amount, @@sum_sq AS sum_sq_amount, @@max_amt AS max_amount, @@min_amt AS min_amount;
+  PRINT @@products AS product_mix, @@inperson_regions AS inperson_regions, @@hours AS hour_of_day_hist;
+  PRINT @@devices AS devices, @@dev_status AS dev_status_counts, @@n_tiny_online AS n_tiny_online,
+        @@n_last_24h AS n_last_24h, @@n_last_7d AS n_last_7d;
+}

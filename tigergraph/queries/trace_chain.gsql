@@ -1,0 +1,17 @@
+// Ordered chain of the card's transactions around a txn, walking NEXT edges (money-movement / sequence tracing).
+CREATE OR REPLACE QUERY trace_chain(VERTEX<Transaction> txn, INT n_prev, INT n_next) FOR GRAPH FraudGraph {
+  TYPEDEF TUPLE<INT txn, DATETIME ts, DOUBLE amount, STRING channel, INT gap_s> HOP;
+  ListAccum<HOP> @@fwd;
+  ListAccum<HOP> @@back;
+  Cur = {txn};
+  WHILE Cur.size() > 0 LIMIT n_next DO
+    Cur = SELECT t FROM Cur:s -(NEXT>:e)- Transaction:t ACCUM @@fwd += HOP(t.txn_id, t.ts, t.amount, t.channel, e.gap_s);
+  END;
+  Cur = {txn};
+  WHILE Cur.size() > 0 LIMIT n_prev DO
+    Cur = SELECT t FROM Cur:s -(rev_NEXT>:e)- Transaction:t ACCUM @@back += HOP(t.txn_id, t.ts, t.amount, t.channel, e.gap_s);
+  END;
+  Start = {txn};
+  PRINT Start[Start.ts AS ts, Start.amount AS amount, Start.channel AS channel, Start.card_id AS card_id];
+  PRINT @@back AS previous, @@fwd AS next;
+}

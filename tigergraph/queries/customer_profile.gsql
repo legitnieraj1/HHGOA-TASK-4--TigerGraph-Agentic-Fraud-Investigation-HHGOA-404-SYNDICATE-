@@ -1,0 +1,24 @@
+// Customer -> cards -> per-card activity summary as of a moment (history only), plus prior closed cases on those
+// cards ordered MOST-RECENT-FIRST (case memory: apply_memory_prior() reads prior_closed_cases[0] as the latest).
+CREATE OR REPLACE QUERY customer_profile(VERTEX<Customer> customer, DATETIME asof) FOR GRAPH FraudGraph {
+  TYPEDEF TUPLE<INT e, STRING line> CE;
+  MapAccum<STRING, SumAccum<INT>> @@card_txns;
+  MapAccum<STRING, SumAccum<DOUBLE>> @@card_amount;
+  MapAccum<STRING, MinAccum<DATETIME>> @@card_first;
+  MapAccum<STRING, MaxAccum<DATETIME>> @@card_last;
+  MapAccum<STRING, SumAccum<INT>> @@card_online;
+  HeapAccum<CE>(50, e DESC) @@cases_h;
+  ListAccum<STRING> @@cases;
+  Start = {customer};
+  Cards = SELECT c FROM Start:s -(OWNS>)- Card:c ACCUM @@card_txns += (c.card_id -> 0);
+  T = SELECT t FROM Cards:c -(MADE>)- Transaction:t WHERE t.ts < asof
+      ACCUM @@card_txns += (t.card_id -> 1), @@card_amount += (t.card_id -> t.amount),
+            @@card_first += (t.card_id -> t.ts), @@card_last += (t.card_id -> t.ts),
+            IF t.channel == "online" THEN @@card_online += (t.card_id -> 1) END;
+  CC = SELECT cc FROM Cards:c -(rev_CC_ON_CARD>)- ClosedCase:cc WHERE cc.opened_at < asof
+      ACCUM @@cases_h += CE(datetime_to_epoch(cc.opened_at),
+                            cc.case_id + "|" + cc.card_id + "|" + cc.outcome + "|" + cc.pattern + "|" + to_string(cc.exposure_usd) + "|" + to_string(cc.opened_at));
+  WHILE @@cases_h.size() > 0 DO @@cases += @@cases_h.top().line; @@cases_h.pop(); END;
+  PRINT @@card_txns AS card_txns, @@card_online AS card_online_txns, @@card_amount AS card_amount,
+        @@card_first AS card_first_ts, @@card_last AS card_last_ts, @@cases AS prior_closed_cases;
+}

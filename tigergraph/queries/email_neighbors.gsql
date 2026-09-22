@@ -1,0 +1,20 @@
+// Cards sharing a purchaser / recipient email domain in a window (R6 "same recipient email"). Big public domains are noisy: read n_cards.
+CREATE OR REPLACE QUERY email_neighbors(VERTEX<EmailDomain> email, DATETIME asof, INT days) FOR GRAPH FraudGraph {
+  TYPEDEF TUPLE<INT n, STRING card> CT;
+  MapAccum<STRING, SumAccum<INT>> @@rcpt_cards;
+  MapAccum<STRING, SumAccum<INT>> @@purch_cards;
+  HeapAccum<CT>(30, n DESC) @@rcpt_top;
+  HeapAccum<CT>(30, n DESC) @@purch_top;
+  SetAccum<STRING> @@fraud_cards;
+  DATETIME t0 = datetime_sub(asof, INTERVAL days DAY);
+  Start = {email};
+  R = SELECT t FROM Start:e -(rev_RECIPIENT_EMAIL>)- Transaction:t WHERE t.ts <= asof AND t.ts >= t0
+      ACCUM @@rcpt_cards += (t.card_id -> 1);
+  P = SELECT t FROM Start:e -(rev_PURCHASER_EMAIL>)- Transaction:t WHERE t.ts <= asof AND t.ts >= t0
+      ACCUM @@purch_cards += (t.card_id -> 1);
+  CC = SELECT cc FROM R:t -(rev_INVOLVES>)- ClosedCase:cc WHERE cc.opened_at <= asof AND cc.outcome == "confirmed_fraud" ACCUM @@fraud_cards += cc.card_id;
+  FOREACH (c, n) IN @@rcpt_cards DO @@rcpt_top += CT(n, c); END;
+  FOREACH (c, n) IN @@purch_cards DO @@purch_top += CT(n, c); END;
+  PRINT @@rcpt_cards.size() AS n_recipient_cards, @@purch_cards.size() AS n_purchaser_cards, @@fraud_cards.size() AS n_recipient_fraud_cards;
+  PRINT @@rcpt_top AS top_recipient_cards, @@purch_top AS top_purchaser_cards, @@fraud_cards AS fraud_linked_cards;
+}

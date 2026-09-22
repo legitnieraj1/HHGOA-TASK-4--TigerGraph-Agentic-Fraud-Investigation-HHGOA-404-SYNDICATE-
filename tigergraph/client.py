@@ -32,6 +32,20 @@ class TG:
         self.calls = 0  # tool-call counter surfaced in answer files
 
     # ---- auth ----
+    def wake(self, max_wait=90):
+        """Savanna auto-suspends the workspace on idle (configured 20 min) and auto-resumes on traffic, but the first
+        ~20s of resume serves a 'Starting workspace' HTML page (502) instead of the API. Poll /restpp/echo until it's up."""
+        t0 = time.time()
+        while time.time() - t0 < max_wait:
+            try:
+                r = requests.get(f"{self.base}/restpp/echo", timeout=15)
+                if r.status_code == 200 and r.headers.get("content-type", "").startswith("application/json"):
+                    return True
+            except requests.RequestException:
+                pass
+            time.sleep(3)
+        return False
+
     def token(self, force=False):
         now = time.time()
         if not force and self._token and now < self._exp - 60:
@@ -44,9 +58,13 @@ class TG:
                     return self._token
             except Exception:
                 pass
+        self.wake()
         r = requests.post(f"{self.base}/gsql/v1/tokens", timeout=self.timeout,
                           json={"secret": self.secret, "lifetime": str(TOKEN_LIFETIME_S)})
-        d = r.json()
+        try:
+            d = r.json()
+        except ValueError:
+            raise TGError(f"token request non-JSON ({r.status_code}), workspace may still be waking: {r.text[:200]}")
         if r.status_code != 200 or d.get("error"):
             raise TGError(f"token request failed: {r.status_code} {d.get('message')}")
         self._token, self._exp = d["token"], now + TOKEN_LIFETIME_S
@@ -66,6 +84,9 @@ class TG:
         if r.status_code == 401 and retry:  # expired token
             self.token(force=True)
             kw["headers"] = self._h({k: v for k, v in kw.get("headers", {}).items() if k != "Authorization"})
+            return self._req(method, path, retry=False, **kw)
+        if r.status_code in (502, 503) and retry:  # workspace mid-wake or transient gateway hiccup
+            self.wake()
             return self._req(method, path, retry=False, **kw)
         return r
 
@@ -99,7 +120,10 @@ class TG:
                          headers={"Content-Type": "text/plain"}, timeout=600)
 
     def run_query(self, name, **params):
-        return self.rest("GET", f"/restpp/query/{self.graph}/{name}", params=params, timeout=300)
+        """Call an installed query. Params are percent-encoded (%20, not '+'): vertex ids like device keys contain spaces, '/' and '|'."""
+        from urllib.parse import quote
+        qs = "&".join(f"{k}={quote(str(v), safe='')}" for k, v in params.items())
+        return self.rest("GET", f"/restpp/query/{self.graph}/{name}" + (f"?{qs}" if qs else ""), timeout=300)
 
     def stats(self):
         return self.rest("POST", f"/restpp/builtins/{self.graph}", json={"function": "stat_vertex_number", "type": "*"})

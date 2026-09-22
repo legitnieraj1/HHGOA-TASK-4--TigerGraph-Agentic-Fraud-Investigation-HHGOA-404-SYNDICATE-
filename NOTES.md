@@ -115,3 +115,71 @@ Rule: the dataset README wins over prompt.md on data semantics and answer format
 - Data-artifact observation (not used as evidence): injected undocumented rows have timestamps on exact minutes (seconds = 00).
 ### Card testing
 - The 16 closed testing cases are tiny amounts (<$1) scattered over days, not the README's 3-in-an-hour. Loose rule (>=3 online < $5 in 72h before a >=$10 purchase) is weak: fires on 5,054 clean txns vs 89 true (LR ~5). Strict README rule (>=3 tiny < $5 within 60 min then a larger purchase) treated as strong. Both encoded, with different match strengths.
+
+## Phase 2 continued: GSQL queries installed + evidence assembler - DONE 2026-09-22
+
+### 12 installed queries (`tigergraph/queries/*.gsql`, `scripts/35_install_queries.py`)
+Evidence: `get_transaction`, `card_window`, `card_behaviour`, `customer_profile` (prior closed cases, most-recent-first
+via HeapAccum -- feeds case memory), `card_neighbourhood`, `trace_chain`. Patterns: `pattern_card_testing`,
+`pattern_structuring`, `pattern_device_ring`, `device_hubs` (global ring scan). Clusters: `region_cluster`,
+`email_neighbors`. All validated against DuckDB ground truth (exact row/count match) and against closed-case
+positives/negatives. `scripts/35_install_queries.py` now verifies via `SHOW QUERY *` that every requested query is
+actually `# installed` (not `# draft`) -- caught `card_behaviour` silently failing install (a `to_int()` call that
+doesn't exist in this GSQL version; INT/INT is already integer division, fixed by removing the wrapper) after its
+error got hidden by output truncation in an earlier multi-query install. Lesson: never trust an install summary
+count without per-name verification.
+
+### Gotchas hit writing GSQL (Savanna 4.2.5)
+- `to_vertex(id, "Type")` is not valid in a `{...}` vertex-set literal; use typed params (`VERTEX<Card> card`) instead.
+- `HeapAccum` has no `.get()`/indexing -- drain with `WHILE h.size()>0 DO list += h.top(); h.pop(); END` into a
+  `ListAccum` first, then index that.
+- `FILTER (...)` must appear before `OVER (...)` in a window function, not after.
+- `proxy` is a reserved keyword as an attribute name (renamed `ip_proxy`, Phase 1).
+- `to_int()` doesn't exist; integer division of two INTs is already INT in GSQL.
+- Local schema-change jobs need the vertex to exist before `ALTER ... ADD VECTOR ATTRIBUTE` (separate job, Phase 1).
+- REST vertex-id params must be percent-encoded manually (`quote(v, safe='')`); `requests`' default `params=` encodes
+  spaces as `+`, which breaks device-key ids that contain spaces, `/` and `|` (`tigergraph/client.py: run_query`).
+
+### Workspace wake behaviour (auto-suspend 20 min / auto-resume, set in Phase 1)
+- First request after idle gets a `502` "Starting workspace" HTML page for ~15-20s while it wakes; a request can
+  even hit `No route to host` for a few seconds. `TG.wake()` polls `/restpp/echo` for valid JSON before proceeding;
+  `TG._req()` now retries once on 502/503 through `wake()` (previously only retried on 401). Token calls call
+  `wake()` first. Not just the REST gateway wakes progressively -- the query engine (GPE/GSE) can lag a few seconds
+  behind the gateway even after `/restpp/echo` returns 200 (hit one 300s query timeout right after a cold wake;
+  resolved itself once `stats()` confirmed the engine was warm). No code change for that last part; noted here in
+  case a query call needs its own wake-confirmation later.
+
+### `detectors/patterns.py` -- deterministic classifier (LLM never computes this)
+- `classify(episode, structuring, testing, ring)`: composition rule (channel mix + New-device flag) gets CNP and
+  CNP-new-device 100% right on true episodes; card_testing/structuring/ring are checked first as override rules.
+- `ring_strength()`: a device counts as a ring only if it is `New` on >=90% and proxied on >=80% of its activity
+  across >=5 cards (not just "shared by many cards" -- see false-positive fix below).
+- `apply_memory_prior(result, prior_fraud_patterns)`: for the ATO-vs-OOR tie (composition alone can't separate them,
+  see earlier note), nudges toward the most recent confirmed-fraud pattern on the SAME card/customer when it
+  disagrees with the rule call. Validated on all 4,656 true episodes (excluding undocumented): rule alone 76.1%,
+  rule+memory 84.4% (ATO recall alone: 29.6% -> 59.5%). This is the case-memory signal that satisfies acceptance
+  criterion #10 ("similar prior cases change a recommendation") for the ATO/OOR ambiguity specifically; broader
+  semantic similar-case retrieval is a separate GraphRAG vector-search component (Phase 4, not yet built).
+
+### `detectors/evidence.py` -- evidence bundle assembler (Phase 5's gather_evidence node will call this)
+- `build(tg, txn_id, card_id, customer_id)`: pulls the flagged txn, reconstructs the episode (`card_window` +-24h +
+  local `pred` table lookup), runs testing/structuring/ring probes, pulls card/customer baselines and case memory,
+  classifies the pattern, and returns an `evidence` list already shaped like the answer format's
+  `case.evidence[]` (`claim`, `source`, `ref`, `entity_ids`).
+- **Found and fixed a real evidence-honesty bug before it could reach an answer file**: `card_neighbourhood`'s raw
+  "other cards sharing a device that have a fraud history" is NOT a signal -- 10.1% of all 14,317 cards (1,441) have
+  >=1 confirmed-fraud closed case, so on a popular device with hundreds of users that count is large by base rate
+  alone (observed 160/14,317... no, 160 cards on one popular device in a single smoke-test case). Citing it would
+  have been an unsupported claim (policy s.7). Fixed: only `ring_strength()`'s calibrated, filtered signal
+  (New+proxied, 0 FP across 25 closed-case negatives incl. cleared) feeds `connected_card_ids` / device evidence.
+- Ran on all 20 case-pack rows end to end against the live graph: 20/20 succeeded, ~8.5s and ~9.5 graph calls per
+  case (171s / 191 calls total). HHG-014 (the analyst_request case, explicitly "several cards show purchases from
+  the same unusual device profile") correctly comes back `undocumented`, confidence 0.95, ring detected -- exactly
+  what the trigger text describes. Preliminary pattern spread across the 20 cases (pre-LLM, pre-uncertainty-loop,
+  subject to change once evidence_requests/memory/LLM synthesis run): 8x card_not_present_new_device, 3x
+  out_of_region_use, 2x card_not_present_fraud, 2x account_takeover, 2x undocumented, 1x card_testing (loose),
+  1x flagged for further evidence-gathering (low episode signal). Sanity-checked that 6 borderline cases with a
+  populated `ring` bundle (common phone models / OS+browser combos, share_new 41-64%, share_proxy ~0%) were
+  correctly rejected by `ring_strength()` and did NOT flip to `undocumented` -- confirms the detector isn't
+  over-firing on "popular new phone this holiday season" coincidences, which the Jul-Oct-only calibration sample
+  could plausibly have missed since the case pack is Nov-Dec.

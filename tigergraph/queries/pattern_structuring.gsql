@@ -1,0 +1,27 @@
+// Structuring: >= 3 online purchases inside `minutes`, each in [0.8*threshold, threshold): amounts chosen to stay under a limit.
+CREATE OR REPLACE QUERY pattern_structuring(VERTEX<Card> card, DATETIME t_ref, INT hours, DOUBLE threshold, INT minutes) FOR GRAPH FraudGraph {
+  TYPEDEF TUPLE<INT e, INT txn, DOUBLE amt> ET;
+  HeapAccum<ET>(300, e ASC) @@near_h;
+  ListAccum<ET> @@near;
+  ListAccum<INT> @@run_txns;
+  SumAccum<DOUBLE> @@run_total;
+  INT n = 0; INT lo = 0; INT best = 0; INT best_lo = 0; INT span = minutes * 60;
+  DATETIME a = datetime_sub(t_ref, INTERVAL hours HOUR);
+  DATETIME b = datetime_add(t_ref, INTERVAL hours HOUR);
+  DOUBLE floor_amt = 0.8 * threshold;
+  Start = {card};
+  T = SELECT t FROM Start:s -(MADE>)- Transaction:t
+      WHERE t.channel == "online" AND t.ts >= a AND t.ts <= b AND t.amount >= floor_amt AND t.amount < threshold
+      ACCUM @@near_h += ET(datetime_to_epoch(t.ts), t.txn_id, t.amount);
+  WHILE @@near_h.size() > 0 DO @@near += @@near_h.top(); @@near_h.pop(); END;
+  n = @@near.size();
+  IF n > 0 THEN
+    FOREACH hi IN RANGE[0, n - 1] DO
+      WHILE @@near.get(hi).e - @@near.get(lo).e > span DO lo = lo + 1; END;
+      IF hi - lo + 1 > best THEN best = hi - lo + 1; best_lo = lo; END;
+    END;
+    FOREACH i IN RANGE[best_lo, best_lo + best - 1] DO @@run_txns += @@near.get(i).txn; @@run_total += @@near.get(i).amt; END;
+  END;
+  PRINT n AS n_near_threshold, best AS max_in_window, threshold AS threshold, (best >= 3) AS match;
+  PRINT @@run_txns AS run_txns, @@run_total AS run_total;
+}

@@ -1,0 +1,12 @@
+// Full attribute set of one transaction plus its device, region, emails and any closed case that involves it.
+CREATE OR REPLACE QUERY get_transaction(VERTEX<Transaction> txn) FOR GRAPH FraudGraph {
+  ListAccum<STRING> @@links;
+  Start = {txn};
+  D = SELECT d FROM Start:s -(FROM_DEVICE>)- DeviceProfile:d ACCUM @@links += "device|" + d.device_key;
+  R = SELECT r FROM Start:s -(BILLED_IN>)- BillingRegion:r ACCUM @@links += "region|" + r.region;
+  E1 = SELECT e FROM Start:s -(PURCHASER_EMAIL>)- EmailDomain:e ACCUM @@links += "purchaser_email|" + e.domain;
+  E2 = SELECT e FROM Start:s -(RECIPIENT_EMAIL>)- EmailDomain:e ACCUM @@links += "recipient_email|" + e.domain;
+  C = SELECT cc FROM Start:s -(rev_INVOLVES>)- ClosedCase:cc ACCUM @@links += "closed_case|" + cc.case_id + "|" + cc.outcome + "|" + cc.pattern;
+  PRINT Start;
+  PRINT @@links AS links;
+}

@@ -1,0 +1,17 @@
+// Cards billed in a region inside a window, their volume, and links to confirmed-fraud closed cases (R6 "same billing region").
+CREATE OR REPLACE QUERY region_cluster(VERTEX<BillingRegion> region, DATETIME asof, INT days) FOR GRAPH FraudGraph {
+  TYPEDEF TUPLE<INT n, STRING card> CT;
+  MapAccum<STRING, SumAccum<INT>> @@card_n;
+  HeapAccum<CT>(30, n DESC) @@top;
+  SetAccum<STRING> @@fraud_cards;
+  SumAccum<INT> @@n_txns; SumAccum<INT> @@n_inperson;
+  DATETIME t0 = datetime_sub(asof, INTERVAL days DAY);
+  Start = {region};
+  T = SELECT t FROM Start:r -(rev_BILLED_IN>)- Transaction:t WHERE t.ts <= asof AND t.ts >= t0
+      ACCUM @@card_n += (t.card_id -> 1), @@n_txns += 1, IF t.channel == "in_person" THEN @@n_inperson += 1 END;
+  CC = SELECT cc FROM T:t -(rev_INVOLVES>)- ClosedCase:cc WHERE cc.opened_at <= asof AND cc.outcome == "confirmed_fraud"
+      ACCUM @@fraud_cards += cc.card_id;
+  FOREACH (c, n) IN @@card_n DO @@top += CT(n, c); END;
+  PRINT @@n_txns AS n_txns, @@n_inperson AS n_inperson, @@card_n.size() AS n_cards, @@fraud_cards.size() AS n_fraud_linked_cards;
+  PRINT @@top AS top_cards, @@fraud_cards AS fraud_linked_cards;
+}
