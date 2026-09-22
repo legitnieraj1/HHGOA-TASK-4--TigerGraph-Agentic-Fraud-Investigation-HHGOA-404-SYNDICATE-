@@ -22,3 +22,4 @@ outputs/benchmark_run*.log
 tigergraph/.vectors_applied
 ui/node_modules/
 ui/dist/
+cases/LIVE-*.json

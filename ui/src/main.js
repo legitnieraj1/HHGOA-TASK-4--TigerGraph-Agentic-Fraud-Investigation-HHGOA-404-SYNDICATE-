@@ -160,11 +160,24 @@ async function approve(action, decision) {
 }
 
 function initChat() {
-  $("#chat-form").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
+  // Carbon's cds-text-input / cds-button are NOT form-associated custom elements (verified against
+  // the installed package: no ElementInternals/formAssociated anywhere in either source file) -- a
+  // native <form> submit event never fires from clicking cds-button, and FormData(form) can't see
+  // values living in cds-text-input's shadow DOM anyway. Reading each input's real `.value` property
+  // directly and handling a plain click, not relying on native form submission at all.
+  const submit = $("#chat-submit");
+  const inputs = { txn: $("#txn"), card: $("#card"), cust: $("#cust"), reason: $("#reason") };
+
+  submit.addEventListener("click", async () => {
+    const vals = { txn: inputs.txn.value, card: inputs.card.value, cust: inputs.cust.value, reason: inputs.reason.value };
+    if (!vals.txn || !vals.card || !vals.cust || !vals.reason) {
+      Object.entries(inputs).forEach(([k, el]) => (el.invalid = !vals[k]));
+      return;
+    }
+    Object.values(inputs).forEach((el) => (el.invalid = false));
+
     const log = $("#chat-log");
-    const userMsg = `Investigate txn ${esc(fd.get("flagged_txn_id"))} on ${esc(fd.get("card_id"))}: ${esc(fd.get("trigger_text"))}`;
+    const userMsg = `Investigate txn ${esc(vals.txn)} on ${esc(vals.card)}: ${esc(vals.reason)}`;
     log.insertAdjacentHTML("beforeend", `<div class="chat-msg user cds-body-compact-01">${userMsg}</div>`);
     const spinnerId = "sp-" + Date.now();
     log.insertAdjacentHTML("beforeend", `<div class="chat-msg cds-body-compact-01" id="${spinnerId}"><span class="spinner"></span> Investigating...</div>`);
@@ -174,10 +187,10 @@ function initChat() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          flagged_txn_id: parseInt(fd.get("flagged_txn_id"), 10),
-          card_id: fd.get("card_id"),
-          customer_id: fd.get("customer_id"),
-          trigger_text: fd.get("trigger_text"),
+          flagged_txn_id: parseInt(vals.txn, 10),
+          card_id: vals.card,
+          customer_id: vals.cust,
+          trigger_text: vals.reason,
           trigger_type: "analyst_request",
         }),
       });
@@ -190,7 +203,7 @@ function initChat() {
     } catch (err) {
       $(`#${spinnerId}`).outerHTML = `<div class="chat-msg cds-body-compact-01">Error: ${esc(String(err))}</div>`;
     }
-    e.target.reset();
+    Object.values(inputs).forEach((el) => (el.value = ""));
   });
 }
 
@@ -205,15 +218,13 @@ document.querySelector("#app").innerHTML = `
       <div class="chat-log" id="chat-log">
         <div class="chat-msg cds-body-compact-01">Trigger or steer a live investigation. Give a flagged transaction id, card id and customer id from the dataset, and a reason.</div>
       </div>
-      <form class="chat-form" id="chat-form">
-        <cds-form-group class="field-group" legend-text="">
-          <div class="field-group"><label class="cds-label-01" for="txn">Flagged transaction id</label><cds-text-input id="txn" name="flagged_txn_id" placeholder="e.g. 3514030" required></cds-text-input></div>
-        </cds-form-group>
-        <div class="field-group"><label class="cds-label-01" for="card">Card id</label><cds-text-input id="card" name="card_id" placeholder="e.g. C12382-K1" required></cds-text-input></div>
-        <div class="field-group"><label class="cds-label-01" for="cust">Customer id</label><cds-text-input id="cust" name="customer_id" placeholder="e.g. C12382" required></cds-text-input></div>
-        <div class="field-group"><label class="cds-label-01" for="reason">Reason</label><cds-text-input id="reason" name="trigger_text" placeholder="e.g. analyst spotted unusual activity" required></cds-text-input></div>
-        <cds-button kind="primary" type="submit">Investigate</cds-button>
-      </form>
+      <div class="chat-form" id="chat-form">
+        <div class="field-group"><label class="cds-label-01" for="txn">Flagged transaction id</label><cds-text-input id="txn" placeholder="e.g. 3514030" invalid-text="Required"></cds-text-input></div>
+        <div class="field-group"><label class="cds-label-01" for="card">Card id</label><cds-text-input id="card" placeholder="e.g. C12382-K1" invalid-text="Required"></cds-text-input></div>
+        <div class="field-group"><label class="cds-label-01" for="cust">Customer id</label><cds-text-input id="cust" placeholder="e.g. C12382" invalid-text="Required"></cds-text-input></div>
+        <div class="field-group"><label class="cds-label-01" for="reason">Reason</label><cds-text-input id="reason" placeholder="e.g. analyst spotted unusual activity" invalid-text="Required"></cds-text-input></div>
+        <cds-button id="chat-submit" kind="primary">Investigate</cds-button>
+      </div>
     </div>
   </div>
 `;

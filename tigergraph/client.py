@@ -91,23 +91,37 @@ class TG:
         return r
 
     # ---- GSQL ----
-    def gsql(self, text, graph=None, check=True):
-        """Run GSQL text via /gsql/v1/statements. Returns raw text output."""
+    def gsql(self, text, graph=None, check=True, retry=True):
+        """Run GSQL text via /gsql/v1/statements. Returns raw text output. Same Savanna wake-page gotcha
+        as rest(): a mid-wake HTML body doesn't match any of _looks_failed()'s failure strings, so without
+        this check a wake race would silently look like a successful (empty/garbage) GSQL result instead
+        of erroring -- worse than rest()'s crash, since it could pass silently."""
         params = {"graph": graph} if graph else None
         r = self._req("POST", "/gsql/v1/statements", params=params, data=text.encode(),
                       headers=self._h({"Content-Type": "text/plain"}))
         out = r.text
+        if retry and "Starting workspace" in out:
+            self.wake()
+            return self.gsql(text, graph=graph, check=check, retry=False)
         if check and (r.status_code >= 400 or _looks_failed(out)):
             raise TGError(f"GSQL failed ({r.status_code}):\n{out[:2000]}")
         return out
 
     # ---- REST++ ----
-    def rest(self, method, path, **kw):
+    def rest(self, method, path, retry=True, **kw):
+        """Savanna's wake page is a real gotcha: mid-wake it can return HTTP 200 (not 502/503) with an
+        HTML 'Starting workspace' body instead of JSON -- _req()'s status-code retry never sees it since
+        the status itself looks fine. Caught live via the UI's investigate panel after 20 min idle
+        auto-suspended the workspace (NOTES.md's own auto-suspend config working as intended). Detect the
+        non-JSON body here and retry once through wake(), same recovery path as the 502/503 case."""
         kw["headers"] = self._h(kw.pop("headers", None))
         r = self._req(method, path, **kw)
         try:
             return r.json()
         except Exception:
+            if retry and "Starting workspace" in r.text:
+                self.wake()
+                return self.rest(method, path, retry=False, **kw)
             raise TGError(f"non-JSON REST response {r.status_code}: {r.text[:500]}")
 
     def upsert(self, payload):
