@@ -1,18 +1,16 @@
 {
   "case_id": "HHG-001",
   "case": {
-    "status": "escalated",
-    "verdict": "uncertain",
-    "fraud_probability": 0.44,
+    "status": "closed_legitimate",
+    "verdict": "legitimate",
+    "fraud_probability": 0.08,
     "pattern": "out_of_region_use",
     "pattern_description": "",
-    "affected_txn_ids": [
-      "3514030"
-    ],
-    "first_suspicious_txn_id": "3514030",
+    "affected_txn_ids": [],
+    "first_suspicious_txn_id": "",
     "connected_card_ids": [],
     "connected_device_profiles": [],
-    "exposure_usd": 77.07,
+    "exposure_usd": 0.0,
     "evidence": [
       {
         "claim": "Flagged transaction 3514030: $77.07 W on in_person, risk_score 0.61, 2016-12-04 19:55:28",
@@ -58,7 +56,7 @@
         "entity_ids": []
       },
       {
-        "claim": "Evidence request (customer_validation): No response from the customer within 24 hours of the validation request (assumed per policy s.5: replies are not provided in this exercise; simulated as non-response for a mid-range case).",
+        "claim": "Evidence request (customer_validation): Customer confirms they made the purchase(s) themselves.",
         "source": "customer",
         "ref": "evidence_request:1",
         "entity_ids": []
@@ -73,7 +71,7 @@
       "CC-3857",
       "CC-4413"
     ],
-    "summary": "Transaction 3514030 for $77.07 was flagged with a risk score of 0.61 due to an out-of-region use pattern. The customer has a history of four prior closed cases, including a confirmed fraud incident involving out-of-region use on 2016-09-17. Despite a validation request, the customer provided no response within the 24-hour window. Given the historical pattern and lack of customer confirmation, the transaction remains suspicious.",
+    "summary": "Transaction 3514030 for $77.07 was flagged by the risk model with a score of 0.61 due to an out-of-region pattern. Despite the customer's history of four prior closed cases, including one confirmed fraud, the cardholder explicitly confirmed they performed this in-person purchase. Consequently, the transaction is deemed legitimate with a fraud probability of 0.08. No further action is required as the customer has validated the activity.",
     "written_to_graph": true,
     "graph_case_id": "HHG-001"
   },
@@ -81,7 +79,7 @@
     {
       "type": "customer_validation",
       "asked_after_step": 1,
-      "assumed_response": "No response from the customer within 24 hours of the validation request (assumed per policy s.5: replies are not provided in this exercise; simulated as non-response for a mid-range case)."
+      "assumed_response": "Customer confirms they made the purchase(s) themselves."
     }
   ],
   "next_best_actions": {
@@ -94,28 +92,23 @@
     ],
     "final": [
       {
-        "action": "MONITOR_CARD",
+        "action": "CLOSE_NO_FRAUD",
         "route": "auto",
-        "reason": "R4: no reply within 24 hours"
-      },
-      {
-        "action": "DECLINE_TRANSACTION",
-        "route": "L1",
-        "reason": "R4: pending authorization, no reply within 24 hours"
+        "reason": "R3: customer confirmed the transaction"
       }
     ],
-    "what_changed": "the requested evidence came back inconclusive/no-reply (probability 0.44); added MONITOR_CARD, DECLINE_TRANSACTION; dropped ESCALATE_TO_ANALYST."
+    "what_changed": "the customer confirmed the transaction (probability 0.08); added CLOSE_NO_FRAUD; dropped ESCALATE_TO_ANALYST."
   },
   "sar": {
     "file": false,
-    "reason": "Fraud not confirmed/strongly suspected, or none of policy s.3a's filing conditions (exposure > $1,000, shared origin, coordinated/undocumented) are met",
+    "reason": "R3/policy: activity confirmed legitimate or fraud probability too low to warrant a filing",
     "narrative": "",
     "subjects": [],
     "total_amount_usd": 0,
     "activity_dates": []
   },
-  "stop_reason": "The investigation concluded due to the lack of customer response to the validation request and the presence of historical fraud patterns on the account.",
+  "stop_reason": "The investigation concluded because the customer confirmed the transaction was legitimate, negating the fraud alert.",
   "tool_calls": 9,
-  "tokens": 1545,
-  "latency_s": 21.5
+  "tokens": 1498,
+  "latency_s": 17.5
 }

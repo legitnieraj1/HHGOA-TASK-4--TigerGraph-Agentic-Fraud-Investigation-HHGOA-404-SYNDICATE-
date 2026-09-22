@@ -39,11 +39,20 @@ def request_customer_validation(current_fraud_probability: float, step: int) -> 
 
 
 def request_step_up_auth(current_fraud_probability: float, step: int) -> EvidenceResponse:
+    """Real step-up auth is a synchronous, binary real-world outcome (no natural 'no reply'), but simulating
+    EVERY probability above CUSTOMER_CONFIRM_BELOW as an outright denial was a real bug: it collapsed the whole
+    genuinely-ambiguous middle band (e.g. p=0.32, barely past the confirm threshold) into "denied", which then
+    pushes probability toward fraud -- circular, and exactly the cases README calls "half legitimate" got
+    pushed the wrong way. Mirrors request_customer_validation's three-way split instead."""
     if current_fraud_probability <= CUSTOMER_CONFIRM_BELOW:
         resp = "Customer completed step-up authentication (OTP) successfully; activity confirmed as the account owner's."
         return EvidenceResponse("step_up_auth", step, resp, "confirmed")
-    resp = "Customer did not complete step-up authentication; the session was abandoned."
-    return EvidenceResponse("step_up_auth", step, resp, "denied")
+    if current_fraud_probability >= CUSTOMER_DENY_ABOVE:
+        resp = "Customer did not complete step-up authentication; the session was abandoned."
+        return EvidenceResponse("step_up_auth", step, resp, "denied")
+    resp = ("Customer completed step-up authentication after a retry (weak signal on the underlying evidence; "
+           "assumed per policy s.5 as a borderline case, neither a clean confirmation nor a clear denial).")
+    return EvidenceResponse("step_up_auth", step, resp, "inconclusive")
 
 
 def request_analyst_info(evidence_bundle: dict, step: int) -> EvidenceResponse:

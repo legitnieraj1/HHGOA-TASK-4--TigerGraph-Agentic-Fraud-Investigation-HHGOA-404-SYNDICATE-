@@ -16,3 +16,4 @@ mcp/tigergraph-mcp/
 mcp/.env
 data/llm_cache/
 outputs/cases_dev/
+data/approvals.json

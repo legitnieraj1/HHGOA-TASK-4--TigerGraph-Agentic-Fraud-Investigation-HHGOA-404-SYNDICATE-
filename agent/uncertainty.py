@@ -1,11 +1,16 @@
 """Fraud-probability scoring and the stop/continue decision (policy s.0, s.6). Deterministic -- combines the
-calibrated propensity model (detectors/propensity.py) with the pattern classifier's confidence
-(detectors/patterns.py), weighted per pattern by how well propensity is known to track that pattern (Phase 2
-calibration: propensity is well-calibrated for the two card-not-present patterns and card_testing, but "blind"
-to in-person ATO/OOR and to undocumented structuring/ring -- see NOTES.md). The LLM never touches this number."""
+calibrated propensity model (detectors/propensity.py) with the pattern classifier's `evidence_strength`
+(detectors/patterns.py -- NOT `confidence`, which answers a different question: "if this is fraud, which
+pattern"; evidence_strength answers "does matching this pattern indicate fraud at all", and composition-only
+matches like "an online purchase happened" score low on it even at high confidence -- see detectors/patterns.py's
+PatternResult docstring and NOTES.md Phase 8 for the bug this replaced: blending raw pattern `confidence` made
+every online purchase look like default fraud evidence, since the composition rules fire on ANY episode of that
+shape). Weighted per pattern by how well propensity is known to track it (Phase 2 calibration: propensity is
+well-calibrated for the two card-not-present patterns and card_testing, but "blind" to in-person ATO/OOR and to
+undocumented structuring/ring -- see NOTES.md). The LLM never touches this number."""
 from dataclasses import dataclass
 
-# weight on propensity vs pattern-confidence, by pattern (NOTES.md "Phase 2 calibration findings"):
+# weight on propensity vs pattern evidence_strength, by pattern (NOTES.md "Phase 2 calibration findings"):
 # CNP/CNP-new-device/card_testing: propensity median 0.77/0.55/0.69 on their true episodes -- trust it.
 # account_takeover/out_of_region_use: propensity median 0.36/0.34 (blind to in-person fraud) -- trust the pattern call.
 # undocumented (structuring/ring): propensity 0.01-0.54 (fully blind, not designed to see it) -- trust the pattern call,
@@ -70,12 +75,17 @@ def assess(evidence_bundle: dict, pattern_result, pred_scores: dict, round_no: i
     pat = pattern_result.pattern
     p_prop = episode_propensity(evidence_bundle["episode_txn_ids"], pred_scores)
     w = PROPENSITY_WEIGHT.get(pat, 0.5)
-    p = w * p_prop + (1 - w) * pattern_result.confidence if pat != "none" else 1 - pattern_result.confidence
+    p = w * p_prop + (1 - w) * pattern_result.evidence_strength
 
+    # Proportional blend, not a hard clamp: a denial/confirmation is strong evidence, but a flat clamp (e.g.
+    # max(p, 0.82)) would collapse every denied case to the identical probability regardless of how strong the
+    # underlying evidence already was -- losing exactly the calibration nuance the README asks for ("be honest;
+    # this is scored for calibration"). Moving proportionally toward the extreme keeps cases ordered by their
+    # underlying evidence strength while still reflecting that a direct response is decisive.
     if evidence_request_outcome == "confirmed":
-        p = min(p, 0.08)
+        p = p * 0.4
     elif evidence_request_outcome == "denied":
-        p = max(p, 0.82)
+        p = p + (1 - p) * 0.6
     p = max(0.01, min(0.99, p))
 
     n_ev = count_independent_evidence(evidence_bundle, pattern_result)

@@ -3,7 +3,7 @@
   "case": {
     "status": "closed_fraud",
     "verdict": "fraud",
-    "fraud_probability": 0.82,
+    "fraud_probability": 0.71,
     "pattern": "out_of_region_use",
     "pattern_description": "",
     "affected_txn_ids": [
@@ -79,7 +79,7 @@
       "CC-4413",
       "CC-4957"
     ],
-    "summary": "Customer C08623 reported unauthorized activity regarding transaction 3530164 for $49.00. Investigation identified an episode of two transactions totaling $165.93, both flagged for out-of-region use. The customer has a history of six prior closed fraud cases, and semantic retrieval identified three similar prior cases. Based on the customer's denial and the identified pattern, the transaction is confirmed as fraud with a probability of 0.82.",
+    "summary": "Case HHG-003 was triggered by a customer complaint from C08623 regarding an unauthorized $49.00 in-person transaction (3530164). Investigation identified an episode of two transactions totaling $165.93 exhibiting an out-of-region use pattern. The customer has a history of six prior closed fraud cases, including a confirmed out-of-region use case from October 2016. Based on the customer's denial of the transaction, this case is classified as confirmed fraud.",
     "written_to_graph": true,
     "graph_case_id": "HHG-003"
   },
@@ -119,8 +119,8 @@
     "total_amount_usd": 0,
     "activity_dates": []
   },
-  "stop_reason": "The investigation concluded that the transaction is confirmed fraud based on customer denial and historical patterns, necessitating a block per policy R2.",
+  "stop_reason": "The investigation concluded as confirmed fraud following the customer's explicit denial of the transaction and alignment with established out-of-region use patterns.",
   "tool_calls": 9,
-  "tokens": 1555,
-  "latency_s": 9.2
+  "tokens": 1571,
+  "latency_s": 11.6
 }

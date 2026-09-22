@@ -1,0 +1,202 @@
+[
+  {
+    "case_id": "HHG-001",
+    "verdict": "uncertain",
+    "pattern": "out_of_region_use",
+    "fraud_probability": 0.44,
+    "sar_file": false,
+    "n_problems": 0,
+    "latency_s": 18.8,
+    "error": null
+  },
+  {
+    "case_id": "HHG-002",
+    "verdict": "uncertain",
+    "pattern": "card_not_present_fraud",
+    "fraud_probability": 0.32,
+    "sar_file": false,
+    "n_problems": 0,
+    "latency_s": 11.1,
+    "error": null
+  },
+  {
+    "case_id": "HHG-003",
+    "verdict": "fraud",
+    "pattern": "out_of_region_use",
+    "fraud_probability": 0.81,
+    "sar_file": false,
+    "n_problems": 0,
+    "latency_s": 14.8,
+    "error": null
+  },
+  {
+    "case_id": "HHG-004",
+    "verdict": "fraud",
+    "pattern": "card_not_present_new_device",
+    "fraud_probability": 0.71,
+    "sar_file": false,
+    "n_problems": 0,
+    "latency_s": 14.9,
+    "error": null
+  },
+  {
+    "case_id": "HHG-005",
+    "verdict": "fraud",
+    "pattern": "card_not_present_new_device",
+    "fraud_probability": 0.7,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 16.1,
+    "error": null
+  },
+  {
+    "case_id": "HHG-006",
+    "verdict": "fraud",
+    "pattern": "undocumented",
+    "fraud_probability": 0.92,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 23.5,
+    "error": null
+  },
+  {
+    "case_id": "HHG-007",
+    "verdict": "fraud",
+    "pattern": "account_takeover",
+    "fraud_probability": 0.87,
+    "sar_file": false,
+    "n_problems": 0,
+    "latency_s": 11.7,
+    "error": null
+  },
+  {
+    "case_id": "HHG-008",
+    "verdict": "fraud",
+    "pattern": "card_testing",
+    "fraud_probability": 0.91,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 21.1,
+    "error": null
+  },
+  {
+    "case_id": "HHG-009",
+    "verdict": "fraud",
+    "pattern": "card_not_present_fraud",
+    "fraud_probability": 0.98,
+    "sar_file": false,
+    "n_problems": 0,
+    "latency_s": 13.5,
+    "error": null
+  },
+  {
+    "case_id": "HHG-010",
+    "verdict": "fraud",
+    "pattern": "card_not_present_new_device",
+    "fraud_probability": 0.7,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 15.9,
+    "error": null
+  },
+  {
+    "case_id": "HHG-011",
+    "verdict": "fraud",
+    "pattern": "card_not_present_new_device",
+    "fraud_probability": 0.88,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 18.4,
+    "error": null
+  },
+  {
+    "case_id": "HHG-012",
+    "verdict": "uncertain",
+    "pattern": "out_of_region_use",
+    "fraud_probability": 0.36,
+    "sar_file": false,
+    "n_problems": 0,
+    "latency_s": 9.1,
+    "error": null
+  },
+  {
+    "case_id": "HHG-013",
+    "verdict": "fraud",
+    "pattern": "card_not_present_new_device",
+    "fraud_probability": 0.71,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 17.4,
+    "error": null
+  },
+  {
+    "case_id": "HHG-014",
+    "verdict": "fraud",
+    "pattern": "undocumented",
+    "fraud_probability": 0.86,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 18.1,
+    "error": null
+  },
+  {
+    "case_id": "HHG-015",
+    "verdict": "fraud",
+    "pattern": "card_not_present_new_device",
+    "fraud_probability": 0.7,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 16.9,
+    "error": null
+  },
+  {
+    "case_id": "HHG-016",
+    "verdict": "fraud",
+    "pattern": "card_not_present_new_device",
+    "fraud_probability": 0.88,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 19.3,
+    "error": null
+  },
+  {
+    "case_id": "HHG-017",
+    "verdict": "fraud",
+    "pattern": "card_not_present_fraud",
+    "fraud_probability": 0.74,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 16.8,
+    "error": null
+  },
+  {
+    "case_id": "HHG-018",
+    "verdict": "fraud",
+    "pattern": "account_takeover",
+    "fraud_probability": 0.81,
+    "sar_file": false,
+    "n_problems": 0,
+    "latency_s": 14.5,
+    "error": null
+  },
+  {
+    "case_id": "HHG-019",
+    "verdict": "fraud",
+    "pattern": "card_not_present_new_device",
+    "fraud_probability": 0.9,
+    "sar_file": false,
+    "n_problems": 0,
+    "latency_s": 15.8,
+    "error": null
+  },
+  {
+    "case_id": "HHG-020",
+    "verdict": "fraud",
+    "pattern": "card_not_present_new_device",
+    "fraud_probability": 0.71,
+    "sar_file": true,
+    "n_problems": 0,
+    "latency_s": 16.1,
+    "error": null
+  }
+]

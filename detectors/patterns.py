@@ -25,7 +25,20 @@ PATTERNS = ("card_testing", "card_not_present_fraud", "card_not_present_new_devi
 @dataclass
 class PatternResult:
     pattern: str
-    confidence: float                       # strength of this LABEL (not fraud probability)
+    confidence: float                       # strength of this LABEL, i.e. "if this IS fraud, how sure are we
+                                             # it's THIS pattern" -- NOT fraud probability. Phase 2 validated
+                                             # this at ~100% for CNP/CNP-new-device, conditional on already
+                                             # knowing the episode was fraud. Used by apply_memory_prior() and
+                                             # for picking between alternatives; NOT for fraud_probability.
+    evidence_strength: float = 0.5          # how much the MATCH ITSELF indicates fraud occurred at all, independent
+                                             # of which pattern it'd be. LOW for compositions every transaction of
+                                             # that channel/device-shape satisfies (an online purchase, an in-person
+                                             # purchase -- matching tells you almost nothing on its own). HIGH only
+                                             # for rare, specific, separately-validated signals (structuring, a
+                                             # calibrated device ring, a strict card-testing sequence). This is what
+                                             # agent/uncertainty.py actually blends into fraud_probability -- see
+                                             # NOTES.md Phase 8 for why conflating this with `confidence` was a bug
+                                             # (it made EVERY online purchase look like default fraud evidence).
     description: str = ""                   # required text when pattern == "undocumented"
     reasons: list = field(default_factory=list)
     alternatives: list = field(default_factory=list)   # (pattern, confidence) the evidence also fits
@@ -57,7 +70,7 @@ def classify(episode: list, structuring: Optional[dict] = None, testing: Optiona
     """episode: list of dicts with channel, dev_status, product, addr1 (episode txns incl. the flagged one).
     structuring/testing/ring: bundles from the GSQL pattern queries (may be None)."""
     if not episode:
-        return PatternResult("none", 0.9, reasons=["no suspicious episode reconstructed"])
+        return PatternResult("none", 0.9, evidence_strength=0.05, reasons=["no suspicious episode reconstructed"])
     n = len(episode)
     online = [t for t in episode if t.get("channel") == "online"]
     inperson = [t for t in episode if t.get("channel") == "in_person"]
@@ -72,7 +85,7 @@ def classify(episode: list, structuring: Optional[dict] = None, testing: Optiona
     if structuring and structuring.get("match"):
         T = structuring["threshold"]
         return PatternResult(
-            "undocumented", 0.85,
+            "undocumented", 0.85, evidence_strength=0.85,
             description=(f"Structuring: {structuring['max_in_window']} online purchases within {STRUCT_MINUTES} minutes, each just under "
                          f"${T:,.0f} (total ${structuring['run_total']:,.2f}), amounts kept below an authorization threshold. Found by scanning the "
                          f"card's online purchases in the surrounding window; it matches none of the five documented typologies."),
@@ -81,7 +94,7 @@ def classify(episode: list, structuring: Optional[dict] = None, testing: Optiona
     rs = ring_strength(ring) if ring else None
     if rs:
         return PatternResult(
-            "undocumented", rs["confidence"],
+            "undocumented", rs["confidence"], evidence_strength=rs["confidence"],
             description=(f"Coordinated shared-device ring: one device profile appears as New behind a proxy on {rs['n_cards']} distinct cards "
                          f"({rs['n_txns']} transactions), {rs['fraud_linked_cards']} of them already tied to confirmed-fraud cases. "
                          f"Found by device-centrality over the card-device graph, not by any single card's behaviour."),
@@ -89,25 +102,32 @@ def classify(episode: list, structuring: Optional[dict] = None, testing: Optiona
             flags={**flags, "ring": rs})
     # 3) card testing
     if testing and testing.get("strict_match"):
-        return PatternResult("card_testing", 0.9, reasons=[f"{testing['max_tiny_in_60min']} tiny online auths within 60 min, then a larger purchase"], flags=flags)
+        return PatternResult("card_testing", 0.9, evidence_strength=0.85,
+                             reasons=[f"{testing['max_tiny_in_60min']} tiny online auths within 60 min, then a larger purchase"], flags=flags)
     if testing and testing.get("loose_match") and len(online) == n:
         alts.append(("card_testing", 0.55))
     # 4) channel composition (labels in the closed history follow it exactly for online episodes)
     if len(online) == n:
         if any_new:
-            return PatternResult("card_not_present_new_device", 0.85, reasons=["all transactions online; device marked New for the account"], alternatives=alts, flags=flags)
+            return PatternResult("card_not_present_new_device", 0.85, evidence_strength=0.2,
+                                 reasons=["all transactions online; device marked New for the account"], alternatives=alts, flags=flags)
         if alts:
-            return PatternResult("card_testing", 0.55, reasons=["tiny online authorisations before a larger purchase (loose match)"],
+            return PatternResult("card_testing", 0.55, evidence_strength=0.25,
+                                 reasons=["tiny online authorisations before a larger purchase (loose match)"],
                                  alternatives=[("card_not_present_fraud", 0.4)], flags=flags)
-        return PatternResult("card_not_present_fraud", 0.85, reasons=["all transactions online; device not flagged New"], flags=flags)
+        return PatternResult("card_not_present_fraud", 0.85, evidence_strength=0.2,
+                             reasons=["all transactions online; device not flagged New"], flags=flags)
     if online and inperson:
-        return PatternResult("account_takeover", 0.6, reasons=["mixed online and in-person activity inconsistent with one cardholder"],
+        return PatternResult("account_takeover", 0.6, evidence_strength=0.35,
+                             reasons=["mixed online and in-person activity inconsistent with one cardholder"],
                              alternatives=[("out_of_region_use", 0.3)], flags=flags)
     # in-person only: ATO vs OOR not separable in the history (67% best case); report as a soft call
     if n_prod > 1 or n_addr > 1 or n >= 4:
-        return PatternResult("account_takeover", 0.5, reasons=["in-person only but several products/regions/transactions"],
+        return PatternResult("account_takeover", 0.5, evidence_strength=0.2,
+                             reasons=["in-person only but several products/regions/transactions"],
                              alternatives=[("out_of_region_use", 0.45)], flags=flags)
-    return PatternResult("out_of_region_use", 0.5, reasons=["in-person only, single product and region"],
+    return PatternResult("out_of_region_use", 0.5, evidence_strength=0.15,
+                         reasons=["in-person only, single product and region"],
                          alternatives=[("account_takeover", 0.4)], flags=flags)
 
 

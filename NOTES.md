@@ -399,3 +399,47 @@ HHG-014 surfaced the actual ring cases from Phase 2; CC-0001 surfaced 3 genuinel
 and those ids get written as real `SIMILAR_TO` edges in the graph (agent/memory.py) -- so both forms of memory
 this system has (same-card structured history, and semantic vector retrieval) are demonstrated working, not just
 one. Results: `outputs/memory_eval.json`.
+
+## Phase 8: benchmark run - a real calibration bug found by looking at the OVERALL distribution, not one case
+
+Ran the full 20-case benchmark twice before trusting it. Run 1 (after the Phase 5 gather_more fixes) came back
+17 `fraud` / 3 `uncertain` / **0 `legitimate`** out of 20. README: "Half the cases are legitimate... An agent
+that blocks everything scores badly." Zero legitimate verdicts across 20 real cases was a signal something was
+still wrong, even though every individual case's reasoning looked locally defensible -- this only showed up by
+looking at the aggregate, not by reviewing any single case file.
+
+Root cause: `detectors/patterns.py`'s `PatternResult.confidence` answers "if this IS fraud, which pattern is it"
+(validated at ~100% in Phase 2, but only ever tested against episodes ALREADY KNOWN to be confirmed fraud) --
+NOT "is this fraud at all". `agent/uncertainty.assess()` was blending that confidence directly into
+`fraud_probability`, but the channel-composition rules (`card_not_present_fraud`, `card_not_present_new_device`,
+the in-person `account_takeover`/`out_of_region_use` soft calls) fire on the SHAPE of an episode alone -- "this
+happened online", "this happened in person" -- which is true of essentially every transaction, fraud or not.
+Those branches carried confidence 0.5-0.85 regardless of how mundane the transaction looked, so EVERY online
+purchase started with an artificial floor around 0.25-0.35 just from pattern-matching, on top of whatever the
+propensity model contributed -- collapsing the whole legitimate-leaning population toward "uncertain" at best,
+never confidently "legitimate".
+
+Fix: split `PatternResult` into `confidence` (unchanged, still "which pattern") and a new `evidence_strength`
+("does matching this pattern indicate fraud at all"). Composition-only branches got LOW evidence_strength
+(0.15-0.35: matching them alone is weak evidence), while the rare, separately-validated signals (structuring
+0.85, a calibrated device ring, strict card-testing 0.85) kept HIGH evidence_strength, unchanged from before.
+`agent/uncertainty.assess()` now blends propensity with `evidence_strength`, not `confidence`. `apply_memory_prior`
+and the ATO/OOR alternative-picking logic still correctly use `confidence` (unaffected -- that's genuinely a
+"which pattern" decision, not a "how suspicious" one).
+
+Verified the fix on the same 5 spot-check cases before re-running all 20: HHG-001 and HHG-002 (previously
+`uncertain` at 0.44/0.32) now correctly resolve to `legitimate` at 0.08/0.13 once a low-suspicion simulated
+response confirms a weak underlying signal; HHG-009 (customer denial, strong pattern) still lands confidently
+at 0.90; HHG-014 (the device ring) is unaffected at 0.86, exactly as it should be -- the fix only pulled down
+the DEFAULT/composition-only floor, not the rare validated signals.
+
+Final run (`scripts/60_run_benchmark.py`, all 20 case_pack cases, `cases/*.json`): see the console output logged
+alongside this note and `outputs/benchmark_summary.json` for the exact verdict/pattern/SAR distribution. All 20
+files pass `agent/validate.py`'s structural + ID-existence checks with 0 problems.
+
+**Process note for anyone reading this later**: none of the three real bugs found in Phases 5 and 8 (the
+`no reply` string mismatch, the step-up-auth binary-split bias, and this confidence/evidence_strength
+conflation) were visible from reading the code in isolation. Each one only surfaced by actually running cases
+and checking whether the AGGREGATE output made sense against a stated expectation (the README's "half
+legitimate", the policy's own stop conditions) -- not by reviewing any single case's reasoning, which looked
+locally fine every time.

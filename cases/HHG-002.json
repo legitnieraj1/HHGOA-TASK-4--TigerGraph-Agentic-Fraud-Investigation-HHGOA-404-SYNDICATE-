@@ -1,18 +1,16 @@
 {
   "case_id": "HHG-002",
   "case": {
-    "status": "closed_fraud",
-    "verdict": "fraud",
-    "fraud_probability": 0.82,
+    "status": "closed_legitimate",
+    "verdict": "legitimate",
+    "fraud_probability": 0.13,
     "pattern": "card_not_present_fraud",
     "pattern_description": "",
-    "affected_txn_ids": [
-      "3478782"
-    ],
-    "first_suspicious_txn_id": "3478782",
+    "affected_txn_ids": [],
+    "first_suspicious_txn_id": "",
     "connected_card_ids": [],
     "connected_device_profiles": [],
-    "exposure_usd": 292.36,
+    "exposure_usd": 0.0,
     "evidence": [
       {
         "claim": "Flagged transaction 3478782: $292.36 C on online, risk_score 0.79, 2016-11-22 17:27:07",
@@ -53,12 +51,6 @@
         "source": "document",
         "ref": "pattern:card_not_present_fraud",
         "entity_ids": []
-      },
-      {
-        "claim": "Evidence request (step_up_auth): Customer did not complete step-up authentication; the session was abandoned.",
-        "source": "customer",
-        "ref": "evidence_request:1",
-        "entity_ids": []
       }
     ],
     "similar_prior_cases": [
@@ -67,49 +59,38 @@
       "CC-3908",
       "CC-4160"
     ],
-    "summary": "Case HHG-002 was initiated following a risk score of 0.79 on transaction 3478782 for $292.36. The transaction was identified as card-not-present fraud, supported by the customer's failure to complete step-up authentication and a history of prior confirmed fraud on card C11891-K1. Given the abandoned session and the alignment with known fraud patterns, the transaction is classified as confirmed fraud with an exposure of $292.36. Similar prior cases (CC-2992, CC-3415, CC-3908) further corroborate the risk profile associated with this account.",
+    "summary": "Transaction 3478782 for $292.36 was flagged by the risk model with a score of 0.79, triggering a review for potential card-not-present fraud. Despite the model's score and the customer's history of a confirmed fraud case on 2016-09-30, the current transaction does not exhibit the typical burst pattern associated with card-not-present fraud. The device used for this transaction was not flagged as new, and the investigation concludes the activity is legitimate. The fraud probability is assessed at 0.13.",
     "written_to_graph": true,
     "graph_case_id": "HHG-002"
   },
-  "evidence_requests": [
-    {
-      "type": "step_up_auth",
-      "asked_after_step": 1,
-      "assumed_response": "Customer did not complete step-up authentication; the session was abandoned."
-    }
-  ],
+  "evidence_requests": [],
   "next_best_actions": {
     "initial": [
       {
-        "action": "MONITOR_CARD",
+        "action": "CLOSE_NO_FRAUD",
         "route": "auto",
-        "reason": "fraud probability 0.32; no specific rule fired, default to monitoring"
+        "reason": "fraud probability 0.13 is low; no rule indicates otherwise"
       }
     ],
     "final": [
       {
-        "action": "BLOCK_CARD",
-        "route": "L1",
-        "reason": "R2: customer denied the transaction"
-      },
-      {
-        "action": "CREATE_CASE",
+        "action": "CLOSE_NO_FRAUD",
         "route": "auto",
-        "reason": "R2"
+        "reason": "fraud probability 0.13 is low; no rule indicates otherwise"
       }
     ],
-    "what_changed": "the customer failed to complete step-up authentication, raising probability to 0.82; added BLOCK_CARD, CREATE_CASE; dropped MONITOR_CARD."
+    "what_changed": "nothing"
   },
   "sar": {
     "file": false,
-    "reason": "Fraud not confirmed/strongly suspected, or none of policy s.3a's filing conditions (exposure > $1,000, shared origin, coordinated/undocumented) are met",
+    "reason": "R3/policy: activity confirmed legitimate or fraud probability too low to warrant a filing",
     "narrative": "",
     "subjects": [],
     "total_amount_usd": 0,
     "activity_dates": []
   },
-  "stop_reason": "The investigation concluded after the customer abandoned the required step-up authentication process, confirming the fraudulent nature of the transaction.",
+  "stop_reason": "The transaction was determined to be legitimate based on the lack of suspicious device indicators and the absence of a broader fraud pattern, resulting in a low fraud probability of 0.13.",
   "tool_calls": 13,
-  "tokens": 1515,
-  "latency_s": 15.0
+  "tokens": 1458,
+  "latency_s": 12.0
 }

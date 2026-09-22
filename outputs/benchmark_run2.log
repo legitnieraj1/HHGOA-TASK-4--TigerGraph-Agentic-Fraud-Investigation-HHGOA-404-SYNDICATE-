@@ -1,0 +1,27 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 16129.53it/s]
+HHG-001  OK             verdict=uncertain   pattern=out_of_region_use            p=0.44  sar=False  (19s)
+HHG-002  OK             verdict=uncertain   pattern=card_not_present_fraud       p=0.32  sar=False  (11s)
+HHG-003  OK             verdict=fraud       pattern=out_of_region_use            p=0.81  sar=False  (15s)
+HHG-004  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.71  sar=False  (15s)
+HHG-005  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.70  sar=True  (16s)
+HHG-006  OK             verdict=fraud       pattern=undocumented                 p=0.92  sar=True  (24s)
+HHG-007  OK             verdict=fraud       pattern=account_takeover             p=0.87  sar=False  (12s)
+HHG-008  OK             verdict=fraud       pattern=card_testing                 p=0.91  sar=True  (21s)
+HHG-009  OK             verdict=fraud       pattern=card_not_present_fraud       p=0.98  sar=False  (14s)
+HHG-010  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.70  sar=True  (16s)
+HHG-011  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.88  sar=True  (18s)
+HHG-012  OK             verdict=uncertain   pattern=out_of_region_use            p=0.36  sar=False  (9s)
+HHG-013  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.71  sar=True  (17s)
+HHG-014  OK             verdict=fraud       pattern=undocumented                 p=0.86  sar=True  (18s)
+HHG-015  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.70  sar=True  (17s)
+HHG-016  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.88  sar=True  (19s)
+HHG-017  OK             verdict=fraud       pattern=card_not_present_fraud       p=0.74  sar=True  (17s)
+HHG-018  OK             verdict=fraud       pattern=account_takeover             p=0.81  sar=False  (14s)
+HHG-019  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.90  sar=False  (16s)
+HHG-020  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.71  sar=True  (16s)
+
+======================================================================
+20 cases, 20 valid, 0 invalid, 0 failed, 324s total
+verdicts: {'uncertain': 3, 'fraud': 17}
+sar filed: 11
