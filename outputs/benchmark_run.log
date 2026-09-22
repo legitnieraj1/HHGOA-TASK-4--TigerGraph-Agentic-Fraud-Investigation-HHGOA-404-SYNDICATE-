@@ -1,20 +1,0 @@
-Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 20636.92it/s]
-HHG-001  OK             verdict=uncertain   pattern=out_of_region_use            p=0.44  sar=False  (22s)
-HHG-002  OK             verdict=fraud       pattern=card_not_present_fraud       p=0.82  sar=False  (15s)
-HHG-003  OK             verdict=fraud       pattern=out_of_region_use            p=0.82  sar=False  (9s)
-HHG-004  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.82  sar=False  (16s)
-HHG-005  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.82  sar=True  (22s)
-HHG-006  OK             verdict=fraud       pattern=undocumented                 p=0.82  sar=True  (15s)
-HHG-007  OK             verdict=fraud       pattern=account_takeover             p=0.82  sar=False  (12s)
-HHG-008  OK             verdict=fraud       pattern=card_testing                 p=0.82  sar=True  (18s)
-HHG-009  OK             verdict=fraud       pattern=card_not_present_fraud       p=0.95  sar=False  (15s)
-HHG-010  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.82  sar=True  (17s)
-HHG-011  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.82  sar=True  (19s)
-HHG-012  OK             verdict=uncertain   pattern=out_of_region_use            p=0.36  sar=False  (18s)
-HHG-013  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.82  sar=True  (17s)
-HHG-014  OK             verdict=fraud       pattern=undocumented                 p=0.86  sar=True  (17s)
-HHG-015  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.82  sar=True  (18s)
-HHG-016  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.82  sar=True  (17s)
-/opt/homebrew/Cellar/python@3.11/3.11.16/Frameworks/Python.framework/Versions/3.11/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
-  warnings.warn('resource_tracker: There appear to be %d '

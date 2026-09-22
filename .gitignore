@@ -17,3 +17,6 @@ mcp/.env
 data/llm_cache/
 outputs/cases_dev/
 data/approvals.json
+outputs/benchmark_run*.log
+.DS_Store
+tigergraph/.vectors_applied

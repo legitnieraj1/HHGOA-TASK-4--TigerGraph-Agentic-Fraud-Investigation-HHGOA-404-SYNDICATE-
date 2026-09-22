@@ -1,14 +1,0 @@
-Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights: 100%|██████████| 103/103 [00:00<00:00, 16437.61it/s]
-HHG-001  OK             verdict=legitimate  pattern=out_of_region_use            p=0.08  sar=False  (18s)
-HHG-002  OK             verdict=legitimate  pattern=card_not_present_fraud       p=0.13  sar=False  (12s)
-HHG-003  OK             verdict=fraud       pattern=out_of_region_use            p=0.71  sar=False  (12s)
-HHG-004  OK             verdict=fraud       pattern=card_not_present_new_device  p=0.63  sar=False  (13s)
-HHG-005  OK             verdict=legitimate  pattern=card_not_present_new_device  p=0.07  sar=True  (18s)
-HHG-006  OK             verdict=fraud       pattern=undocumented                 p=0.92  sar=True  (14s)
-HHG-007  OK             verdict=fraud       pattern=account_takeover             p=0.85  sar=False  (12s)
-HHG-008  OK             verdict=fraud       pattern=card_testing                 p=0.86  sar=True  (20s)
-HHG-009  OK             verdict=fraud       pattern=card_not_present_fraud       p=0.90  sar=False  (11s)
-HHG-010  OK             verdict=legitimate  pattern=card_not_present_new_device  p=0.06  sar=True  (17s)
-/opt/homebrew/Cellar/python@3.11/3.11.16/Frameworks/Python.framework/Versions/3.11/lib/python3.11/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked semaphore objects to clean up at shutdown
-  warnings.warn('resource_tracker: There appear to be %d '
