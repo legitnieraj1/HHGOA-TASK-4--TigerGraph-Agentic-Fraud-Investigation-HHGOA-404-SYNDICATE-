@@ -1,0 +1,44 @@
+# The Vercel build only needs ui/ (source + the committed static-api JSON) and vercel.json. Everything
+# else is the Python agent, its 225 MB scoring database, and local envs: irrelevant to a static build
+# and past Vercel's 100 MB per-file limit.
+#
+# Every path here is root-anchored with a leading slash. An unanchored "cases/" matches a directory of
+# that name at ANY depth, which silently excluded ui/public/static-api/cases/ and shipped a site whose
+# case detail and subgraph endpoints all 404'd.
+/.venv/
+/.git/
+/node_modules/
+/ui/node_modules/
+/ui/dist/
+
+/data/
+/cases/
+/outputs/
+/mcp/
+/scripts/
+/tests/
+/notebooks/
+
+/api/
+/agent/
+/detectors/
+/graphrag/
+/tigergraph/
+
+# Vercel's framework detection reads pyproject.toml at the root and concludes this is a FastAPI
+# backend, which overrides the static build entirely.
+/pyproject.toml
+/Makefile
+/Dockerfile
+/.dockerignore
+
+*.duckdb
+*.duckdb.wal
+*.parquet
+*.tsv
+*.joblib
+*.pyc
+__pycache__/
+.env
+.env.local
+.tg_token
