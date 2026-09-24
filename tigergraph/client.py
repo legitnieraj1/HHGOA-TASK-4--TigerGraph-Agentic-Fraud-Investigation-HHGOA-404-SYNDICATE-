@@ -133,16 +133,33 @@ class TG:
         return self.rest("POST", f"/restpp/ddl/{self.graph}", params=params, data=data,
                          headers={"Content-Type": "text/plain"}, timeout=600)
 
-    def run_query(self, name, **params):
+    def run_query(self, name, _retries=6, **params):
         """Call an installed query. A LIST-valued param (e.g. a 384-float embedding for vectorSearch) is sent as a
         JSON POST body -- a GET query string of that size is unwieldy and TigerGraph's list-as-repeated-key GET
         form is easy to get wrong. Scalar-only calls still use GET with percent-encoded values (%20, not '+':
-        vertex ids like device keys contain spaces, '/' and '|')."""
+        vertex ids like device keys contain spaces, '/' and '|').
+
+        A THIRD Savanna cold-start state, distinct from the two rest()/gsql() already handle: the engine can be
+        far enough awake to return a normal JSON error response ({"error": true, "message": "...failed to
+        retrieve id map..."}) while its vertex id index is still rebuilding after a resume. Unlike the
+        'Starting workspace' HTML page, this looks like a legitimate query failure to rest() -- only run_query's
+        callers know it's transient. Retry with backoff (this can take 10-30s+ after a genuinely cold wake)."""
         if any(isinstance(v, (list, tuple)) for v in params.values()):
-            return self.rest("POST", f"/restpp/query/{self.graph}/{name}", json=params, timeout=300)
-        from urllib.parse import quote
-        qs = "&".join(f"{k}={quote(str(v), safe='')}" for k, v in params.items())
-        return self.rest("GET", f"/restpp/query/{self.graph}/{name}" + (f"?{qs}" if qs else ""), timeout=300)
+            call = lambda: self.rest("POST", f"/restpp/query/{self.graph}/{name}", json=params, timeout=300)  # noqa: E731
+        else:
+            from urllib.parse import quote
+            qs = "&".join(f"{k}={quote(str(v), safe='')}" for k, v in params.items())
+            call = lambda: self.rest("GET", f"/restpp/query/{self.graph}/{name}" + (f"?{qs}" if qs else ""), timeout=300)  # noqa: E731
+
+        import time as _time
+        for attempt in range(_retries):
+            result = call()
+            msg = (result.get("message") or "") if isinstance(result, dict) else ""
+            if result.get("error") and "id map" in msg.lower() and attempt < _retries - 1:
+                _time.sleep(min(3 * (attempt + 1), 15))
+                continue
+            return result
+        return result
 
     def stats(self):
         return self.rest("POST", f"/restpp/builtins/{self.graph}", json={"function": "stat_vertex_number", "type": "*"})

@@ -194,10 +194,15 @@ function initChat() {
           trigger_type: "analyst_request",
         }),
       });
-      const d = await r.json();
-      $(`#${spinnerId}`).outerHTML = r.ok
+      // A backend 500 can come back as plain text ("Internal Server Error"), not JSON -- Starlette's
+      // default error middleware does this for an unhandled exception. r.json() would throw and land
+      // in the outer catch as an opaque "SyntaxError: Unexpected token" instead of the real message.
+      const raw = await r.text();
+      let d = null;
+      try { d = JSON.parse(raw); } catch { /* not JSON, fall through */ }
+      $(`#${spinnerId}`).outerHTML = r.ok && d
         ? `<div class="chat-msg cds-body-compact-01">Done. <strong>${esc(d.case_id)}</strong>: ${esc(d.case.verdict)} / ${esc(d.case.pattern)} (p=${d.case.fraud_probability.toFixed(2)}). ${esc(d.case.summary)}</div>`
-        : `<div class="chat-msg cds-body-compact-01">Error: ${esc(JSON.stringify(d))}</div>`;
+        : `<div class="chat-msg cds-body-compact-01">Error (HTTP ${r.status}): ${esc(d ? JSON.stringify(d) : raw.slice(0, 300))}</div>`;
       await loadCases();
       if (r.ok) openCase(d.case_id);
     } catch (err) {
