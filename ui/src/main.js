@@ -18,6 +18,34 @@ import { renderSubgraph, SUBGRAPH_LEGEND, legendColour } from "./subgraph.js";
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
+// Where the live agent lives. Empty locally (same origin serves both the UI and the full FastAPI app);
+// set to the backend's URL at build time for the Vercel deployment, where browsing is served as static
+// JSON and only the live endpoints reach a real server. Build with:
+//   VITE_AGENT_API=https://<backend-host> npm run build
+const AGENT_API = (import.meta.env.VITE_AGENT_API || "").replace(/\/$/, "");
+
+/**
+ * GET a read endpoint. On the deployment these are static files, so a case created live against the
+ * backend is not in that set: fall back to the backend before giving up, otherwise a judge who triggers
+ * an investigation gets a 404 on the case they just created.
+ */
+async function apiGet(path) {
+  const r = await fetch(path);
+  if (r.ok) return r.json();
+  if (AGENT_API) {
+    const live = await fetch(`${AGENT_API}${path}`);
+    if (live.ok) return live.json();
+  }
+  throw new Error(`GET ${path} failed (${r.status})`);
+}
+
+const apiPost = (path, body) =>
+  fetch(`${AGENT_API}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
 // verdict -> Carbon tag `type` (real Carbon tag color tokens: red/green/purple/gray/blue etc, not invented hex)
 const VERDICT_TAG = { fraud: "red", legitimate: "green", uncertain: "purple", escalated: "purple" };
 const ROUTE_TAG = { auto: "green", L1: "purple", L2: "red" };
@@ -68,7 +96,7 @@ function renderOverview(cases) {
 }
 
 async function loadCases() {
-  const cases = await (await fetch("/api/cases")).json();
+  const cases = await apiGet("/api/cases");
   if (!currentCase) renderOverview(cases);
   const list = $("#case-list");
   if (!cases.length) {
@@ -126,7 +154,7 @@ async function openCase(id) {
   currentCase = id;
   destroySubgraph();
   $$(".case-row").forEach((el) => el.classList.toggle("active", el.dataset.id === id));
-  const d = await (await fetch(`/api/cases/${id}`)).json();
+  const d = await apiGet(`/api/cases/${id}`);
   const c = d.case;
   const approvals = d._approvals || {};
 
@@ -217,7 +245,7 @@ async function openCase(id) {
   // Subgraph is fetched after the detail markup is in the DOM (it needs a sized container to lay out
   // into). Guarded on `currentCase` so a fast click-through doesn't render a stale case's graph.
   try {
-    const g = await (await fetch(`/api/cases/${id}/subgraph`)).json();
+    const g = await apiGet(`/api/cases/${id}/subgraph`);
     if (currentCase !== id) return;
     const host = $("#subgraph");
     if (host) destroySubgraph = renderSubgraph(host, g);
@@ -228,11 +256,15 @@ async function openCase(id) {
 }
 
 async function approve(action, decision) {
-  await fetch(`/api/cases/${currentCase}/approve`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, decision }),
-  });
+  const r = await apiPost(`/api/cases/${currentCase}/approve`, { action, decision });
+  if (!r.ok) {
+    window.alert(
+      AGENT_API
+        ? `Could not record the decision (HTTP ${r.status}). The agent backend may be waking up; try again.`
+        : "Approvals need the agent backend. Run the stack locally to record a decision."
+    );
+    return;
+  }
   openCase(currentCase);
 }
 
@@ -260,16 +292,12 @@ function initChat() {
     log.insertAdjacentHTML("beforeend", `<div class="chat-msg cds-body-compact-01" id="${spinnerId}"><span class="spinner"></span> Investigating...</div>`);
     log.scrollTop = log.scrollHeight;
     try {
-      const r = await fetch("/api/investigate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          flagged_txn_id: parseInt(vals.txn, 10),
-          card_id: vals.card,
-          customer_id: vals.cust,
-          trigger_text: vals.reason,
-          trigger_type: "analyst_request",
-        }),
+      const r = await apiPost("/api/investigate", {
+        flagged_txn_id: parseInt(vals.txn, 10),
+        card_id: vals.card,
+        customer_id: vals.cust,
+        trigger_text: vals.reason,
+        trigger_type: "analyst_request",
       });
       // A backend 500 can come back as plain text ("Internal Server Error"), not JSON -- Starlette's
       // default error middleware does this for an unhandled exception. r.json() would throw and land
