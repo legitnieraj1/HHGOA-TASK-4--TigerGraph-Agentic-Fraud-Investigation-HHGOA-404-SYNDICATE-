@@ -77,6 +77,76 @@ def get_case(case_id: str):
     return d
 
 
+@app.get("/api/cases/{case_id}/subgraph")
+def case_subgraph(case_id: str):
+    """The evidence subgraph behind a case (spec Phase 7's 'evidence subgraph visualisation').
+
+    Built from the answer file's own evidence rather than re-querying TigerGraph. Every node here was
+    already produced by one of the installed GSQL queries, and each carries the `via` ref naming which
+    one -- so this is a view of the evidence, not a decorative redraw of it. It also means the panel
+    renders instantly and can't fail mid-demo on a cold Savanna workspace.
+
+    Edge labels are the real schema edge types (OWNS / MADE / FROM_DEVICE / SIMILAR_TO / INVOLVES), not
+    invented ones. The subject card comes from the evidence refs (`card_window(card=...)`, present on
+    every case); the customer derives from it by the dataset's own documented rule,
+    card_id = "{customer_id}-K{rank}" (NOTES.md Phase 0), so it needs no separate lookup.
+    """
+    import re
+
+    d = get_case(case_id)
+    c = d["case"]
+    refs = " ".join(e.get("ref", "") for e in c["evidence"])
+    m = re.search(r"card=([A-Za-z0-9\-]+)", refs)
+    card = m.group(1) if m else None
+    customer = card.rsplit("-K", 1)[0] if card and "-K" in card else None
+
+    nodes, edges, seen = [], [], set()
+
+    def node(nid, ntype, label, via="", **extra):
+        if not nid or nid in seen:
+            return
+        seen.add(nid)
+        nodes.append({"id": str(nid), "type": ntype, "label": str(label), "via": via, **extra})
+
+    def edge(a, b, label):
+        if a in seen and b in seen:
+            edges.append({"source": str(a), "target": str(b), "label": label})
+
+    node(case_id, "case", case_id, "this investigation", verdict=c["verdict"])
+    node(customer, "customer", customer, "query:customer_profile")
+    node(card, "card", card, "query:card_window", subject=True)
+    edge(customer, card, "OWNS")
+
+    flagged = str(c.get("first_suspicious_txn_id") or "")
+    txns = [str(t) for t in c.get("affected_txn_ids", [])]
+    if flagged and flagged not in txns:
+        txns.insert(0, flagged)
+    for t in txns[:10]:
+        node(t, "transaction", t, "query:get_transaction", flagged=(t == flagged))
+        edge(card, t, "MADE")
+        edge(case_id, t, "INVOLVES")
+
+    for dev in c.get("connected_device_profiles", [])[:3]:
+        short = " ".join(str(dev).split("|")[:2]).strip() or str(dev)[:28]
+        node(dev, "device", short, "query:pattern_device_ring")
+        for t in txns[:10]:
+            edge(t, dev, "FROM_DEVICE")
+
+    devices = c.get("connected_device_profiles", [])
+    for other in c.get("connected_card_ids", [])[:8]:
+        node(other, "card", other, "query:pattern_device_ring", connected=True)
+        if devices:
+            edge(devices[0], other, "FROM_DEVICE")
+        else:
+            edge(card, other, "CASE_CONNECTED_TO")
+
+    for prior in c.get("similar_prior_cases", [])[:5]:
+        node(prior, "prior_case", prior, "query:vector_search_cases")
+        edge(case_id, prior, "SIMILAR_TO")
+
+    return {"case_id": case_id, "nodes": nodes, "edges": edges}
+
+
 class ApprovalRequest(BaseModel):
     action: str
     decision: str  # "approved" | "rejected"

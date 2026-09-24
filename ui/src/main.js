@@ -13,6 +13,8 @@ import "@carbon/web-components/es/components/text-input/text-input.js";
 import "@carbon/web-components/es/components/form-group/form-group.js";
 import "@carbon/web-components/es/components/loading/loading.js";
 
+import { renderSubgraph, SUBGRAPH_LEGEND, legendColour } from "./subgraph.js";
+
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
@@ -21,6 +23,7 @@ const VERDICT_TAG = { fraud: "red", legitimate: "green", uncertain: "purple", es
 const ROUTE_TAG = { auto: "green", L1: "purple", L2: "red" };
 
 let currentCase = null;
+let destroySubgraph = () => {};   // stops the previous case's force simulation before the next renders
 
 function esc(s) {
   const d = document.createElement("div");
@@ -28,9 +31,45 @@ function esc(s) {
   return d.innerHTML;
 }
 
+const money = (n) => "$" + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+/**
+ * The portfolio view, shown until a case is opened. Every figure is computed from the real case files,
+ * nothing here is illustrative. This is the first thing a visitor sees, so it carries the headline
+ * result rather than an instruction to go click something.
+ */
+function renderOverview(cases) {
+  const fraud = cases.filter((c) => c.verdict === "fraud").length;
+  const legit = cases.filter((c) => c.verdict === "legitimate").length;
+  const exposure = cases.reduce((s, c) => s + c.exposure_usd, 0);
+  const sars = cases.filter((c) => c.sar_filed).length;
+  const pending = cases.reduce((s, c) => s + c.pending_approvals, 0);
+
+  const stat = (value, label) =>
+    `<div class="stat"><div class="stat-value">${value}</div><div class="stat-label cds-label-01">${label}</div></div>`;
+
+  $("#case-detail").innerHTML = `
+    <div class="overview">
+      <h1 class="overview-title">Agentic fraud investigation</h1>
+      <p class="overview-lede cds-body-compact-02">
+        Every case below was investigated against a live TigerGraph graph. Evidence comes from installed
+        GSQL queries; actions stay gated behind the approval policy.
+      </p>
+      <div class="stat-row">
+        ${stat(cases.length, "cases closed")}
+        ${stat(fraud, "fraud")}
+        ${stat(legit, "legitimate")}
+        ${stat(money(exposure), "exposure found")}
+        ${stat(sars, "SARs filed")}
+        ${stat(pending, "awaiting approval")}
+      </div>
+      <p class="overview-hint cds-label-01">Open a case to see the evidence subgraph behind its verdict.</p>
+    </div>`;
+}
+
 async function loadCases() {
-  const health = await (await fetch("/api/health")).json();
   const cases = await (await fetch("/api/cases")).json();
+  if (!currentCase) renderOverview(cases);
   const list = $("#case-list");
   if (!cases.length) {
     list.innerHTML = `<div class="empty-state">No cases yet.<br/>Run <code>scripts/60_run_benchmark.py</code> or trigger one from the panel on the right.</div>`;
@@ -85,6 +124,7 @@ function nbaRow(a, phase, approvals) {
 
 async function openCase(id) {
   currentCase = id;
+  destroySubgraph();
   $$(".case-row").forEach((el) => el.classList.toggle("active", el.dataset.id === id));
   const d = await (await fetch(`/api/cases/${id}`)).json();
   const c = d.case;
@@ -94,7 +134,32 @@ async function openCase(id) {
     .map((e) => `<div class="evidence-item"><div class="src cds-label-01">${esc(e.source)} &middot; ${esc(e.ref)}</div><div class="cds-body-compact-01">${esc(e.claim)}</div></div>`)
     .join("");
 
+  const legend = SUBGRAPH_LEGEND.map(
+    ([key, label]) =>
+      `<span class="sg-key cds-label-01"><i style="background:${legendColour(key)}"></i>${label}</span>`
+  ).join("");
+
   $("#case-detail").innerHTML = `
+    <header class="case-head">
+      <div class="case-head-top">
+        <h1 class="case-id">${esc(id)}</h1>
+        <cds-tag type="${VERDICT_TAG[c.verdict] || "gray"}">${esc(c.verdict)}</cds-tag>
+        ${d.sar.file ? `<cds-tag type="red">SAR filed</cds-tag>` : ""}
+      </div>
+      <div class="case-meta">
+        <span>${esc(c.pattern)}</span>
+        <span>p=${c.fraud_probability.toFixed(2)}</span>
+        <span>${c.exposure_usd ? money(c.exposure_usd) + " exposure" : "no exposure"}</span>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2 class="cds-label-01">Evidence subgraph</h2>
+      <div class="sg-wrap" id="subgraph"></div>
+      <div class="sg-legend">${legend}</div>
+      <div class="sg-note cds-label-01">Drag a node to pull the structure apart. Hover for the query that produced it.</div>
+    </section>
+
     <section class="section">
       <h2 class="cds-label-01">Timeline</h2>
       <div class="timeline-row">
@@ -148,6 +213,18 @@ async function openCase(id) {
 
   $$("[data-approve]", $("#case-detail")).forEach((btn) => (btn.onclick = () => approve(btn.dataset.approve, "approved")));
   $$("[data-reject]", $("#case-detail")).forEach((btn) => (btn.onclick = () => approve(btn.dataset.reject, "rejected")));
+
+  // Subgraph is fetched after the detail markup is in the DOM (it needs a sized container to lay out
+  // into). Guarded on `currentCase` so a fast click-through doesn't render a stale case's graph.
+  try {
+    const g = await (await fetch(`/api/cases/${id}/subgraph`)).json();
+    if (currentCase !== id) return;
+    const host = $("#subgraph");
+    if (host) destroySubgraph = renderSubgraph(host, g);
+  } catch {
+    const host = $("#subgraph");
+    if (host) host.innerHTML = `<div class="sg-empty cds-label-01">Subgraph unavailable.</div>`;
+  }
 }
 
 async function approve(action, decision) {
@@ -218,7 +295,7 @@ document.querySelector("#app").innerHTML = `
   </cds-header>
   <div class="layout">
     <div class="col list" id="case-list"></div>
-    <div class="col detail" id="case-detail"><div class="empty-state">Select a case on the left.</div></div>
+    <div class="col detail" id="case-detail"></div>
     <div class="col chat">
       <div class="chat-log" id="chat-log">
         <div class="chat-msg cds-body-compact-01">Trigger or steer a live investigation. Give a flagged transaction id, card id and customer id from the dataset, and a reason.</div>

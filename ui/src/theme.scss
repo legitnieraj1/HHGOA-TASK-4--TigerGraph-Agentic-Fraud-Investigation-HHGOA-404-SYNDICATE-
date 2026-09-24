@@ -24,6 +24,9 @@
   --brand-primary: #0b6839;   // dark green -- hhgoa's body background color
   --brand-accent: #fee101;    // gold -- hhgoa's primary accent/selection color
   --brand-pink: #ff0080;      // hhgoa's secondary accent
+  // brand green lifted for use as a foreground dot/label on the dark surface, where #0b6839 itself
+  // sits too close to the background to read. Same hue, raised lightness.
+  --brand-primary-light: #3fa76a;
   --brand-offwhite: #fffbe8;  // hhgoa's cream text/surface color
   --brand-ink: #14130f;       // hhgoa's near-black text color
   --font-brand: 'Playfair Display', 'IBM Plex Serif', serif;

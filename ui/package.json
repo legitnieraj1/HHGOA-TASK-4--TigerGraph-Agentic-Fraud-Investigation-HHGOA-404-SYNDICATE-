@@ -19,6 +19,7 @@
   "dependencies": {
     "@carbon/icons": "^11.88.0",
     "@carbon/styles": "^1.115.0",
-    "@carbon/web-components": "^2.63.0"
+    "@carbon/web-components": "^2.63.0",
+    "d3-force": "^3.0.0"
   }
 }

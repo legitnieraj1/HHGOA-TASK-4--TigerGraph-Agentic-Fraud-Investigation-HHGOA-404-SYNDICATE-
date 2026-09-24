@@ -97,3 +97,76 @@ cds-header { position: static; }
   .spinner { animation: none; }
   .case-row, .meter-fill { transition: none; }
 }
+
+/* ---- portfolio overview (shown until a case is opened) ----
+   This is the first impression, so it carries the result, not an instruction. Density 8 rules apply:
+   no card boxes, figures breathe in plain layout, all numbers set in the brand mono. */
+.overview { padding: var(--cds-spacing-10) var(--cds-spacing-08); max-width: 62rem; }
+.overview-title {
+  font-family: var(--font-brand);
+  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
+  line-height: 1.12;
+  font-weight: 600;
+  margin: 0 0 var(--cds-spacing-05);
+  color: var(--cds-text-primary);
+}
+.overview-lede { color: var(--cds-text-secondary); max-width: 58ch; margin: 0 0 var(--cds-spacing-09); }
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: var(--cds-spacing-07) var(--cds-spacing-06);
+  padding-top: var(--cds-spacing-07);
+  border-top: 1px solid var(--cds-border-subtle);
+}
+.stat-value {
+  font-family: var(--font-brand-mono);
+  font-size: clamp(1.5rem, 2.6vw, 2.125rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--brand-accent);
+}
+.stat-label { color: var(--cds-text-secondary); margin-top: var(--cds-spacing-02); }
+.overview-hint { color: var(--cds-text-placeholder); margin-top: var(--cds-spacing-09); }
+
+/* ---- case header: gives an opened case a focal point instead of starting cold on a section ---- */
+.case-head { padding: var(--cds-spacing-07) var(--cds-spacing-08) var(--cds-spacing-06); border-bottom: 1px solid var(--cds-border-subtle); }
+.case-head-top { display: flex; align-items: center; gap: var(--cds-spacing-04); flex-wrap: wrap; }
+.case-id {
+  font-family: var(--font-brand-mono);
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0;
+  color: var(--cds-text-primary);
+}
+/* Separated by space and a hairline rather than middot chains, which pile up fast in metadata rows. */
+.case-meta { display: flex; flex-wrap: wrap; gap: var(--cds-spacing-05); margin-top: var(--cds-spacing-04); font-family: var(--font-brand-mono); font-size: 0.75rem; color: var(--cds-text-secondary); }
+.case-meta span { padding-right: var(--cds-spacing-05); border-right: 1px solid var(--cds-border-subtle); }
+.case-meta span:last-child { border-right: none; padding-right: 0; }
+
+/* ---- evidence subgraph ---- */
+.sg-wrap { position: relative; height: 22rem; margin-bottom: var(--cds-spacing-05); background: var(--cds-layer-01); }
+.sg-canvas { display: block; }
+.sg-empty { display: grid; place-items: center; height: 100%; color: var(--cds-text-placeholder); }
+.sg-tip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--cds-background-inverse);
+  color: var(--cds-text-inverse);
+  padding: var(--cds-spacing-03) var(--cds-spacing-04);
+  max-width: 11rem;
+  z-index: 2;
+}
+.sg-tip .sg-via { font-family: var(--font-brand-mono); opacity: 0.7; }
+.sg-legend { display: flex; flex-wrap: wrap; gap: var(--cds-spacing-05); margin-bottom: var(--cds-spacing-03); }
+.sg-key { display: inline-flex; align-items: center; gap: var(--cds-spacing-03); color: var(--cds-text-secondary); }
+.sg-key i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.sg-note { color: var(--cds-text-placeholder); }
+
+@media (max-width: 900px) {
+  .overview { padding: var(--cds-spacing-07) var(--cds-spacing-05); }
+  .case-head { padding: var(--cds-spacing-06) var(--cds-spacing-05); }
+  .sg-wrap { height: 17rem; }
+}
