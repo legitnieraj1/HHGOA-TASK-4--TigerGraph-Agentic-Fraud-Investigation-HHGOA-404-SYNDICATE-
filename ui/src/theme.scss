@@ -38,6 +38,13 @@
   --cds-border-interactive: var(--brand-primary);
   --cds-icon-interactive: var(--brand-accent);
   --cds-background-brand: var(--brand-primary);
+
+  // Carbon's <cds-button> reads its own dedicated button tokens, not --cds-interactive -- missed on the
+  // first pass, which is why the Investigate button stayed Carbon-default blue after the rest of the
+  // page re-themed. (verified token names by grepping the installed button.scss.js source)
+  --cds-button-primary: var(--brand-primary);
+  --cds-button-primary-hover: var(--brand-accent);
+  --cds-button-primary-active: #084d2b;
 }
 
 html, body {
