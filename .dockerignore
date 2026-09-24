@@ -1,0 +1,14 @@
+.venv/
+.git/
+.env
+.tg_token
+ui/
+data/raw/
+data/export/
+data/llm_cache/
+data/profile/*.parquet
+outputs/cases_dev/
+**/__pycache__/
+*.pyc
+notebooks/
+tests/
