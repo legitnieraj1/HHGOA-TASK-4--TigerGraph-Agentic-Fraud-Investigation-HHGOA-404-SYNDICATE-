@@ -39,6 +39,11 @@ async function apiGet(path) {
   throw new Error(`GET ${path} failed (${r.status})`);
 }
 
+// The deployment serves browsing as static JSON and has no agent behind it. Detected from the health
+// payload rather than sniffing the hostname, so a local run against the real FastAPI app is never
+// mistaken for one. Gates the two controls that need a live backend: investigate and approve.
+let STATIC_MODE = false;
+
 const apiPost = (path, body) =>
   fetch(`${AGENT_API}${path}`, {
     method: "POST",
@@ -135,6 +140,8 @@ function nbaRow(a, phase, approvals) {
     control = `<span class="cds-label-01" style="color:var(--cds-text-secondary)">Auto-executed</span>`;
   } else if (decided) {
     control = `<cds-tag type="${decided === "approved" ? "green" : "red"}" size="sm">${decided}</cds-tag>`;
+  } else if (phase === "final" && STATIC_MODE) {
+    control = `<span class="cds-label-01" style="color:var(--cds-text-placeholder)">Awaiting ${esc(a.route)} approval. Recording a decision writes to the graph, so it runs in the live build.</span>`;
   } else if (phase === "final") {
     control = `<div class="buttons">
       <cds-button kind="primary" size="sm" data-approve="${esc(a.action)}">Approve</cds-button>
@@ -256,19 +263,27 @@ async function openCase(id) {
 }
 
 async function approve(action, decision) {
+  if (STATIC_MODE) return;   // buttons are already disabled and labelled; belt and braces
   const r = await apiPost(`/api/cases/${currentCase}/approve`, { action, decision });
   if (!r.ok) {
-    window.alert(
-      AGENT_API
-        ? `Could not record the decision (HTTP ${r.status}). The agent backend may be waking up; try again.`
-        : "Approvals need the agent backend. Run the stack locally to record a decision."
-    );
+    window.alert(`Could not record the decision (HTTP ${r.status}). The agent backend may be waking up; try again.`);
     return;
   }
   openCase(currentCase);
 }
 
 function initChat() {
+  if (STATIC_MODE) {
+    // The live panel needs TigerGraph, an LLM and a 225 MB local scoring database, none of which exist
+    // on a static host. Say so plainly and point at the recording, rather than leaving a button that
+    // spins and then fails in front of whoever is looking at this.
+    $("#chat-form").innerHTML = `
+      <div class="static-note">
+        <div class="cds-body-compact-01">Live investigation runs against TigerGraph from the local build. The recorded demo shows this panel opening a case end to end.</div>
+        <div class="cds-label-01">Reproduce it with <code>make api</code> after <code>make up</code>.</div>
+      </div>`;
+    return;
+  }
   // Carbon's cds-text-input / cds-button are NOT form-associated custom elements (verified against
   // the installed package: no ElementInternals/formAssociated anywhere in either source file) -- a
   // native <form> submit event never fires from clicking cds-button, and FormData(form) can't see
@@ -339,5 +354,15 @@ document.querySelector("#app").innerHTML = `
   </div>
 `;
 
-initChat();
-loadCases();
+async function init() {
+  try {
+    const health = await apiGet("/api/health");
+    STATIC_MODE = health.mode === "static" && !AGENT_API;
+  } catch {
+    STATIC_MODE = false;   // a failed probe is a local problem, not a reason to disable the controls
+  }
+  initChat();
+  await loadCases();
+}
+
+init();

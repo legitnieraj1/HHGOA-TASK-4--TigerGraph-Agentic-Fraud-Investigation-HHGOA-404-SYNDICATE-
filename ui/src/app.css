@@ -177,3 +177,8 @@ cds-header { position: static; }
   .case-head { padding: var(--cds-spacing-06) var(--cds-spacing-05); }
   .sg-wrap { height: 17rem; }
 }
+
+/* Shown in place of the live-investigation form on the static deployment. */
+.static-note { display: grid; gap: var(--cds-spacing-04); }
+.static-note .cds-label-01 { color: var(--cds-text-placeholder); }
+.static-note code { font-family: var(--font-brand-mono); color: var(--brand-accent); }
