@@ -5,7 +5,23 @@ relationships from TigerGraph, runs pattern detectors calibrated against 5,565 r
 grounded policy and prior-case context (GraphRAG), decides when it needs more evidence, recommends actions under
 an approval-gated policy, and writes the resolved case back into the graph as memory for the next investigation.
 
-Built for the TigerGraph × Hacker House Goa / IEEE Agentic Fraud Investigation challenge.
+Built for the TigerGraph × Hacker House Goa / IEEE Agentic Fraud Investigation challenge by **404 Syndicate**.
+
+## Submission
+
+| | |
+|---|---|
+| **Live dashboard** | https://team404syndicate.vercel.app |
+| **Demo video** | `TODO: paste the unlisted video link here before submitting` |
+| **The 20 answers** | [`cases/`](cases/) — one `HHG-###.json` per case_pack case, each a real run against the live graph |
+| **How to reproduce** | [Setup](#setup) then [Reproduce everything](#reproduce-everything) |
+| **Decision log** | [`NOTES.md`](NOTES.md) — every gotcha, bug and spec conflict, phase by phase |
+| **Success criteria** | [`outputs/ACCEPTANCE.md`](outputs/ACCEPTANCE.md) — each of the 11 points mapped to a concrete artifact |
+
+The deployed dashboard is **static**: it serves all 20 investigated cases, their evidence subgraphs, SAR
+narratives and before/after action recommendations. The live investigation panel and the approval buttons
+need TigerGraph, an LLM and a 225 MB local scoring database, so they run from a local checkout (`make api`)
+and are shown in the demo video.
 
 ## Architecture
 
