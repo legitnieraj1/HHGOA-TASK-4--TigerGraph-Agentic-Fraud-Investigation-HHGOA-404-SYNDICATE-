@@ -16,6 +16,28 @@
 
 :root {
   @include theme.theme(themes.$g100, true);
+
+  // hhgoa.com brand palette, pulled from its live compiled CSS (_next/static/chunks/1-*.css:
+  // .text-brand-accent/.bg-brand-primary/.border-brand-pink/.text-brand-offwhite class names), not
+  // guessed. Carbon's own status colors (--cds-support-error/warning/success) are left untouched --
+  // this dashboard's fraud severity meaning has to stay the standard red/amber/green, not brand hues.
+  --brand-primary: #0b6839;   // dark green -- hhgoa's body background color
+  --brand-accent: #fee101;    // gold -- hhgoa's primary accent/selection color
+  --brand-pink: #ff0080;      // hhgoa's secondary accent
+  --brand-offwhite: #fffbe8;  // hhgoa's cream text/surface color
+  --brand-ink: #14130f;       // hhgoa's near-black text color
+  --font-brand: 'Playfair Display', 'IBM Plex Serif', serif;
+  --font-brand-mono: 'Victor Mono', 'IBM Plex Mono', monospace;
+
+  // re-theme Carbon's interactive accent (default blue) onto the brand green/gold, keep g100's
+  // neutral surface grays for data density/legibility
+  --cds-interactive: var(--brand-accent);
+  --cds-link-primary: var(--brand-accent);
+  --cds-link-primary-hover: #ffe94d;
+  --cds-focus: var(--brand-accent);
+  --cds-border-interactive: var(--brand-primary);
+  --cds-icon-interactive: var(--brand-accent);
+  --cds-background-brand: var(--brand-primary);
 }
 
 html, body {
