@@ -144,18 +144,29 @@ class TG:
         retrieve id map..."}) while its vertex id index is still rebuilding after a resume. Unlike the
         'Starting workspace' HTML page, this looks like a legitimate query failure to rest() -- only run_query's
         callers know it's transient. Retry with backoff (this can take 10-30s+ after a genuinely cold wake)."""
+        # TigerGraph enforces its OWN query timeout server-side, default 60s, entirely separate from the
+        # HTTP timeout below: raising only the client one lets requests fail at 60s while the client
+        # happily waits 300. A genuinely cold Savanna workspace routinely needs more than 60s for the
+        # first query, which failed a live run with "exceeded the query timeout threshold (60 seconds)".
+        # GSQL-TIMEOUT overrides it per request and is in MILLISECONDS.
+        hdr = {"GSQL-TIMEOUT": "280000"}
         if any(isinstance(v, (list, tuple)) for v in params.values()):
-            call = lambda: self.rest("POST", f"/restpp/query/{self.graph}/{name}", json=params, timeout=300)  # noqa: E731
+            call = lambda: self.rest("POST", f"/restpp/query/{self.graph}/{name}", json=params, headers=hdr, timeout=300)  # noqa: E731
         else:
             from urllib.parse import quote
             qs = "&".join(f"{k}={quote(str(v), safe='')}" for k, v in params.items())
-            call = lambda: self.rest("GET", f"/restpp/query/{self.graph}/{name}" + (f"?{qs}" if qs else ""), timeout=300)  # noqa: E731
+            call = lambda: self.rest("GET", f"/restpp/query/{self.graph}/{name}" + (f"?{qs}" if qs else ""), headers=hdr, timeout=300)  # noqa: E731
 
         import time as _time
         for attempt in range(_retries):
             result = call()
-            msg = (result.get("message") or "") if isinstance(result, dict) else ""
-            if result.get("error") and "id map" in msg.lower() and attempt < _retries - 1:
+            msg = ((result.get("message") or "") if isinstance(result, dict) else "").lower()
+            # Both are cold-start symptoms, not real query failures: the vertex id index still rebuilding,
+            # and the engine too cold to finish inside its own deadline. A timeout has already burned its
+            # full budget, so it gets far fewer attempts than the cheap id-map case.
+            transient = "id map" in msg or "query timeout threshold" in msg
+            budget = 2 if "query timeout threshold" in msg else _retries
+            if result.get("error") and transient and attempt < min(budget, _retries) - 1:
                 _time.sleep(min(3 * (attempt + 1), 15))
                 continue
             return result
