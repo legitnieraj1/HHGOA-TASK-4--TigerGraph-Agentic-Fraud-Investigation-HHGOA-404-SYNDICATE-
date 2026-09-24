@@ -14,6 +14,32 @@
 @use "@carbon/styles/scss/type";
 @use "@carbon/styles/scss/grid";
 
+// Self-hosted display faces, converted from the supplied .otf to .woff2 (164 KB -> 72 KB combined).
+// Vite fingerprints and emits these from the import graph, so no manual public/ copy to keep in sync.
+//
+// Roc Grotesk Black carries every display moment. A heavy grotesque is the right register for a dense
+// investigative tool, and it replaces Playfair here rather than sitting alongside it: two display faces
+// plus a mono plus Carbon's Plex would be four competing voices.
+@font-face {
+  font-family: "Roc Grotesk";
+  src: url("./fonts/roc-grotesk-black.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+// Things To Remember is a hand-drawn all-caps face. It is deliberately kept off every data surface
+// (numbers, verdicts, evidence) where it would undercut the trust register this tool needs, and used
+// only for the analyst's own typed message in the investigate log, so a human request reads visibly
+// different from machine output.
+@font-face {
+  font-family: "Things To Remember";
+  src: url("./fonts/things-to-remember.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   @include theme.theme(themes.$g100, true);
 
@@ -29,8 +55,9 @@
   --brand-primary-light: #3fa76a;
   --brand-offwhite: #fffbe8;  // hhgoa's cream text/surface color
   --brand-ink: #14130f;       // hhgoa's near-black text color
-  --font-brand: 'Playfair Display', 'IBM Plex Serif', serif;
-  --font-brand-mono: 'Victor Mono', 'IBM Plex Mono', monospace;
+  --font-brand: 'Roc Grotesk', 'IBM Plex Sans', sans-serif;     // display: titles, case ids, section labels
+  --font-brand-mono: 'Victor Mono', 'IBM Plex Mono', monospace;  // hhgoa's mono: all figures and refs
+  --font-hand: 'Things To Remember', 'Victor Mono', monospace;   // the analyst's own words, nothing else
 
   // re-theme Carbon's interactive accent (default blue) onto the brand green/gold, keep g100's
   // neutral surface grays for data density/legibility
