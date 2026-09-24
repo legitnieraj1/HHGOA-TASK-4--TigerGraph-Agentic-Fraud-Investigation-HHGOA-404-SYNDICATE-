@@ -76,7 +76,7 @@ This is the part that proves it's a live agent against the running graph, not a 
   - Customer id: `C12382`
   - Reason: `analyst spotted unusual activity, please review`
 - Click **Investigate**. While it runs (~15-30s live against Savanna), talk over it:
-  > "This just fired a real LangGraph run — trigger, evidence gathering against 12 installed GSQL queries,
+  > "This just fired a real LangGraph run — trigger, evidence gathering against 14 installed GSQL queries,
   > pattern detection, GraphRAG retrieval, the policy engine, and an LLM call that only writes the
   > explanation — it never decides fraud or not. That's deterministic."
 - When it resolves, point at the new case appearing at the top of the case list and open it — same full
